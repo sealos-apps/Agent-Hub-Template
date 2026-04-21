@@ -1,0 +1,41 @@
+{
+  "script": "agents/_template/config.sh",
+  "resource": "config",
+  "actions": [
+    {
+      "action": "set",
+      "label": "Set Config",
+      "args": [
+        {
+          "name": "arg1",
+          "label": "Argument 1",
+          "type": "text",
+          "required": true,
+          "placeholder": "replace-me"
+        },
+        {
+          "name": "arg2",
+          "label": "Argument 2",
+          "type": "text",
+          "required": false,
+          "placeholder": "replace-me"
+        }
+      ]
+    },
+    {
+      "action": "get",
+      "label": "Get Config",
+      "args": []
+    },
+    {
+      "action": "delete",
+      "label": "Delete Config",
+      "args": []
+    },
+    {
+      "action": "list",
+      "label": "List Config",
+      "args": []
+    }
+  ]
+}

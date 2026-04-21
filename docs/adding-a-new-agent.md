@@ -10,11 +10,13 @@
 
 ```text
 agents/my-agent/
-  index.yaml
   Dockerfile
   install.sh
+  config.sh
+  config.json
   entrypoint.sh
-  agenthub.sh
+  index.json
+  _template/index.yaml
   README.md
 ```
 
@@ -29,38 +31,29 @@ agents:
 
 ## 文件职责
 
-- `index.yaml`
-  - 记录镜像名、tag、构建参数、smoke test 参数
 - `Dockerfile`
   - 定义最终镜像如何组装
+  - 必须使用 `FROM ghcr.io/gitlayzer/ubuntu:22.04-base`
 - `install.sh`
-  - 定义真实安装过程
+  - 提供 `install_agent` 函数
+  - 在构建镜像时执行安装逻辑
+- `config.sh`
+  - 提供配置命令分发
+  - 负责接收像 `set config ...`、`get config` 这样的参数
+- `config.json`
+  - 提供前端渲染配置页面所需的字段定义
 - `entrypoint.sh`
-  - 定义容器启动行为
-- `agenthub.sh`
-  - 放这个 agent 自己需要的公共 shell helper
+  - 提供 `start_agent` 函数
+  - 从位置参数读取启动参数
+- `index.json`
+  - 提供 agent 展示信息
+- `_template/index.yaml`
+  - 提供部署该 agent 的 Kubernetes YAML
 - `README.md`
   - 记录这个 agent 的说明和用法
-
-## index.yaml 示例
-
-```yaml
-name: my-agent
-image:
-  repository: agent-hub/my-agent
-  tag: dev
-build:
-  args:
-    MY_AGENT_VERSION: 1.2.3
-smoke_test:
-  - --version
-metadata:
-  description: Real MyAgent runtime image.
-  category: custom-agent
-```
 
 ## 原则
 
 - agent 的安装逻辑放在自己的 `install.sh`
-- agent 自己的公共 shell helper 留在 `agenthub.sh`
+- agent 的配置命令入口放在自己的 `config.sh`
 - `registry/agents.yaml` 只负责名字、路径、启用状态

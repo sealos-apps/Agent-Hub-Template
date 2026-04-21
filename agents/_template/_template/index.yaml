@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: change-me
+  labels:
+    app: change-me
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: change-me
+  template:
+    metadata:
+      labels:
+        app: change-me
+    spec:
+      containers:
+        - name: change-me
+          image: agent-hub/change-me:dev
+          imagePullPolicy: IfNotPresent
+          command: ["/opt/agent/entrypoint.sh"]
+          args: ["start"]
+          workingDir: /workspace

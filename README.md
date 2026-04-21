@@ -10,7 +10,6 @@ This repository now keeps only the directory contract and agent source files. Th
 agents/
   _template/
   hermes/
-  openclaw/
 registry/
   agents.yaml
 docs/
@@ -20,33 +19,21 @@ docs/
 
 Each agent directory is expected to contain:
 
-- `index.yaml`
 - `Dockerfile`
 - `install.sh`
+- `config.sh`
+- `config.json`
 - `entrypoint.sh`
-- `agenthub.sh`
+- `index.json`
+- `_template/index.yaml`
 - `README.md`
-
-## Metadata
-
-`agents/<name>/index.yaml` is the metadata entry for that agent.
-
-Example:
-
-```yaml
-name: hermes
-image:
-  repository: agent-hub/hermes
-  tag: dev
-build:
-  args:
-    HERMES_REF: v2026.4.13
-smoke_test:
-  - version
-```
 
 ## Notes
 
 - The repository no longer includes `scripts/`.
 - The repository no longer includes a root `Makefile`.
-- Base image selection is handled inside each agent Docker build flow.
+- All agent Dockerfiles use `ghcr.io/gitlayzer/ubuntu:22.04-base`.
+- `config.sh` is used for config command routing.
+- `config.json` is used by the frontend to render config operations.
+- `entrypoint.sh` is used for startup handling.
+- `install.sh` is used for installation during image build.

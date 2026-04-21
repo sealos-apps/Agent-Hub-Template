@@ -1,24 +1,34 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-source /opt/agent/agenthub.sh
+export AGENT_NAME="${AGENT_NAME:-hermes}"
+source /opt/agent/config.sh
 
 export HERMES_HOME="${HERMES_HOME:-/home/agent/.hermes}"
 export PATH="/opt/hermes/venv/bin:${PATH}"
 
-mode="${1:-chat}"
+start_agent() {
+  exec hermes "$@"
+}
 
-case "$mode" in
-  shell)
-    shift || true
-    log "starting interactive shell"
-    exec /bin/bash "$@"
-    ;;
-  hermes)
-    shift || true
-    exec hermes "$@"
-    ;;
-  *)
-    exec hermes "$@"
-    ;;
-esac
+main() {
+  local command="${1:-start}"
+  shift || true
+
+  case "$command" in
+    shell)
+      exec /bin/bash "$@"
+      ;;
+    config)
+      exec /opt/agent/config.sh "$@"
+      ;;
+    start)
+      start_agent "$@"
+      ;;
+    *)
+      start_agent "$command" "$@"
+      ;;
+  esac
+}
+
+main "$@"

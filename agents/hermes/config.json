@@ -1,0 +1,48 @@
+{
+  "script": "agents/hermes/config.sh",
+  "resource": "config",
+  "actions": [
+    {
+      "action": "set",
+      "label": "Set Config",
+      "args": [
+        {
+          "name": "endpoint",
+          "label": "Base URL",
+          "type": "text",
+          "required": true,
+          "placeholder": "http://xxx.xxx.xxx/v1"
+        },
+        {
+          "name": "api_key",
+          "label": "API Key",
+          "type": "password",
+          "required": true,
+          "placeholder": "sk-xxxxxxxxxx"
+        },
+        {
+          "name": "model",
+          "label": "Model",
+          "type": "text",
+          "required": false,
+          "default": "gpt-5.4"
+        }
+      ]
+    },
+    {
+      "action": "get",
+      "label": "Get Config",
+      "args": []
+    },
+    {
+      "action": "delete",
+      "label": "Delete Config",
+      "args": []
+    },
+    {
+      "action": "list",
+      "label": "List Config",
+      "args": []
+    }
+  ]
+}

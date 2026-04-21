@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hermes
+  labels:
+    app: hermes
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hermes
+  template:
+    metadata:
+      labels:
+        app: hermes
+    spec:
+      containers:
+        - name: hermes
+          image: agent-hub/hermes:dev
+          imagePullPolicy: IfNotPresent
+          command: ["/opt/agent/entrypoint.sh"]
+          args: ["start"]
+          workingDir: /workspace

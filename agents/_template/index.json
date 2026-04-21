@@ -1,0 +1,17 @@
+{
+  "id": "_template",
+  "icon": "",
+  "name": "Agent Template",
+  "desc": "Scaffold for adding a new agent to this repository.",
+  "version": "template",
+  "status": "template",
+  "image": "ghcr.io/gitlayzer/ubuntu:22.04-base",
+  "base_image": "ghcr.io/gitlayzer/ubuntu:22.04-base",
+  "category": "template",
+  "repo_path": "agents/_template",
+  "readme": "agents/_template/README.md",
+  "tags": [
+    "template",
+    "scaffold"
+  ]
+}

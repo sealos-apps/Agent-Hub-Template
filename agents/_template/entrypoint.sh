@@ -1,25 +1,34 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-source /opt/agent/agenthub.sh
+export AGENT_NAME="${AGENT_NAME:-change-me}"
+source /opt/agent/config.sh
 
 export CHANGE_ME_HOME="${CHANGE_ME_HOME:-/home/agent/.change-me}"
 mkdir -p "$CHANGE_ME_HOME"
 
-mode="${1:-shell}"
-case "$mode" in
-  shell)
-    shift || true
-    if [[ $# -gt 0 ]]; then
+start_agent() {
+  exec /opt/change-me/bin/change-me-run "$@"
+}
+
+main() {
+  local command="${1:-start}"
+  shift || true
+
+  case "$command" in
+    shell)
       exec /bin/bash "$@"
-    fi
-    exec /bin/bash
-    ;;
-  run)
-    shift || true
-    exec /opt/change-me/bin/change-me-run "$@"
-    ;;
-  *)
-    exec "$@"
-    ;;
-esac
+      ;;
+    config)
+      exec /opt/agent/config.sh "$@"
+      ;;
+    start)
+      start_agent "$@"
+      ;;
+    *)
+      start_agent "$command" "$@"
+      ;;
+  esac
+}
+
+main "$@"
