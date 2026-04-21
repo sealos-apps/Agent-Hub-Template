@@ -1,4 +1,4 @@
 agents:
   - name: hermes
     path: agents/hermes
-    enabled: true
+    enabled: false
