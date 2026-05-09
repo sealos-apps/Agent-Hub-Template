@@ -1,181 +1,66 @@
 {
-  "script": "agents/_template/config.sh",
-  "resources": [
-    {
-      "resource": "config",
-      "label": "运行时配置",
-      "description": "用于维护运行时环境变量。模板里只定义动作结构，具体 key 由实际 agent 自己决定。",
-      "actions": [
-        {
-          "action": "set",
-          "label": "设置运行时配置",
-          "args": [
-            {
-              "name": "key",
-              "label": "环境变量名",
-              "type": "text",
-              "required": true,
-              "placeholder": "OPENAI_BASE_URL"
-            },
-            {
-              "name": "value",
-              "label": "值",
-              "type": "text",
-              "required": false,
-              "placeholder": "replace-me"
-            }
-          ]
-        },
-        {
-          "action": "get",
-          "label": "读取运行时配置",
-          "args": []
-        },
-        {
-          "action": "list",
-          "label": "列出运行时配置",
-          "args": []
-        },
-        {
-          "action": "delete",
-          "label": "删除运行时配置",
-          "args": []
-        }
-      ]
-    },
-    {
-      "resource": "yaml",
-      "label": "config.yaml 配置",
-      "description": "用于维护结构化配置。模板里的占位 key 与列表结构仅用于说明能力模型，具体 agent 需要自行替换。",
-      "actions": [
-        {
-          "action": "set",
-          "label": "设置 YAML 标量字段",
-          "args": [
-            {
-              "name": "key",
-              "label": "配置项",
-              "type": "select",
-              "required": true,
-              "options": [
-                "main_value",
-                "secondary_value"
-              ]
-            },
-            {
-              "name": "value",
-              "label": "值",
-              "type": "text",
-              "required": true,
-              "placeholder": "replace-me"
-            }
-          ]
-        },
-        {
-          "action": "get",
-          "label": "读取 YAML 字段",
-          "args": [
-            {
-              "name": "key",
-              "label": "配置项",
-              "type": "select",
-              "required": true,
-              "options": [
-                "main_value",
-                "secondary_value",
-                "list_values"
-              ]
-            }
-          ]
-        },
-        {
-          "action": "delete",
-          "label": "删除 YAML 字段",
-          "args": [
-            {
-              "name": "key",
-              "label": "配置项",
-              "type": "select",
-              "required": true,
-              "options": [
-                "main_value",
-                "secondary_value",
-                "list_values"
-              ]
-            }
-          ]
-        },
-        {
-          "action": "list",
-          "label": "查看完整 YAML",
-          "args": []
-        },
-        {
-          "action": "render",
-          "label": "重渲染 config.yaml",
-          "args": []
-        },
-        {
-          "action": "add",
-          "label": "添加数组或列表项",
-          "args": [
-            {
-              "name": "key",
-              "label": "配置项",
-              "type": "select",
-              "required": true,
-              "options": [
-                "list_values",
-                "item"
-              ]
-            },
-            {
-              "name": "arg1",
-              "label": "参数 1",
-              "type": "text",
-              "required": true,
-              "placeholder": "item-name-or-value"
-            },
-            {
-              "name": "arg2",
-              "label": "参数 2",
-              "type": "text",
-              "required": false,
-              "placeholder": "optional-value-1"
-            },
-            {
-              "name": "arg3",
-              "label": "参数 3",
-              "type": "text",
-              "required": false,
-              "placeholder": "optional-value-2"
-            }
-          ]
-        },
-        {
-          "action": "remove",
-          "label": "移除数组或列表项",
-          "args": [
-            {
-              "name": "key",
-              "label": "配置项",
-              "type": "select",
-              "required": true,
-              "options": [
-                "list_values",
-                "item"
-              ]
-            },
-            {
-              "name": "arg1",
-              "label": "参数 1",
-              "type": "text",
-              "required": true,
-              "placeholder": "item-name-or-value"
-            }
-          ]
-        }
-      ]
-    }
-  ]
+  "schemaVersion": "devbox-agent-config.v1",
+  "script": "/opt/agent/config.sh",
+  "zh": {
+    "resources": [
+      {
+        "resource": "replace-me-resource",
+        "label": "替换为该 Agent 的原生资源名",
+        "description": "这里故意只放占位资源，维护者必须按 agent 原生配置方式重写。",
+        "actions": [
+          {
+            "action": "replace-me-action",
+            "kind": "write",
+            "label": "替换为原生写入动作",
+            "args": [
+              {
+                "name": "replace_me_arg",
+                "label": "替换为原生参数名",
+                "type": "text",
+                "required": true,
+                "placeholder": "replace-me"
+              }
+            ]
+          },
+          {
+            "action": "replace-me-read",
+            "kind": "read",
+            "label": "替换为原生读取动作",
+            "args": []
+          }
+        ]
+      }
+    ]
+  },
+  "en": {
+    "resources": [
+      {
+        "resource": "replace-me-resource",
+        "label": "Replace With Native Resource Name",
+        "description": "This is intentionally a placeholder. Replace it with the target agent's native config resources and actions.",
+        "actions": [
+          {
+            "action": "replace-me-action",
+            "kind": "write",
+            "label": "Replace With Native Write Action",
+            "args": [
+              {
+                "name": "replace_me_arg",
+                "label": "Replace With Native Argument",
+                "type": "text",
+                "required": true,
+                "placeholder": "replace-me"
+              }
+            ]
+          },
+          {
+            "action": "replace-me-read",
+            "kind": "read",
+            "label": "Replace With Native Read Action",
+            "args": []
+          }
+        ]
+      }
+    ]
+  }
 }

@@ -4,3 +4,6 @@
 *.log
 *.tmp
 *.swp
+helloagents/
+reference/
+test/*-local/

@@ -18,6 +18,5 @@ spec:
         - name: change-me
           image: agent-hub/change-me:dev
           imagePullPolicy: IfNotPresent
-          command: ["/opt/agent/entrypoint.sh"]
           args: ["start"]
           workingDir: /workspace

@@ -1,0 +1,322 @@
+{
+  "schemaVersion": "devbox-agent-config.v1",
+  "script": "/opt/agent/config.sh",
+  "zh": {
+    "resources": [
+      {
+        "resource": "provider",
+        "label": "主 Provider",
+        "description": "直接维护 Hermes 原生 model.provider / model.base_url；命名 provider 会写入 Hermes 当前原生 providers。",
+        "actions": [
+          {
+            "action": "set-main",
+            "kind": "write",
+            "label": "设置主 Provider",
+            "args": [
+              {
+                "name": "provider",
+                "label": "Provider",
+                "type": "text",
+                "required": true,
+                "placeholder": "openai / openrouter / anthropic / custom / ccswitch"
+              },
+              {
+                "name": "base_url",
+                "label": "Base URL",
+                "type": "text",
+                "required": false,
+                "placeholder": "http://host/v1"
+              },
+              {
+                "name": "api_mode",
+                "label": "API 模式",
+                "type": "select",
+                "required": false,
+                "options": [
+                  { "label": "Chat Completions", "value": "chat_completions" },
+                  { "label": "Codex Responses", "value": "codex_responses" },
+                  { "label": "Anthropic Messages", "value": "anthropic_messages" }
+                ],
+                "placeholder": "chat_completions"
+              },
+              {
+                "name": "key_env",
+                "label": "API Key 环境变量",
+                "type": "text",
+                "required": false,
+                "placeholder": "CCSWITCH_API_KEY"
+              }
+            ]
+          },
+          {
+            "action": "get-main",
+            "kind": "read",
+            "label": "读取主 Provider",
+            "args": []
+          },
+          {
+            "action": "delete-main",
+            "kind": "delete",
+            "label": "清理 Provider 覆盖",
+            "args": []
+          }
+        ]
+      },
+      {
+        "resource": "model",
+        "label": "主模型",
+        "description": "直接维护 Hermes 原生 model.default。",
+        "actions": [
+          {
+            "action": "set-main",
+            "kind": "write",
+            "label": "设置主模型",
+            "args": [
+              {
+                "name": "model",
+                "label": "模型",
+                "type": "text",
+                "required": true,
+                "placeholder": "gpt-5.4"
+              }
+            ]
+          },
+          {
+            "action": "get-main",
+            "kind": "read",
+            "label": "读取主模型",
+            "args": []
+          },
+          {
+            "action": "delete-main",
+            "kind": "delete",
+            "label": "清理主模型覆盖",
+            "args": []
+          }
+        ]
+      },
+      {
+        "resource": "env",
+        "label": ".env",
+        "description": "直接维护 Hermes 原生 ~/.hermes/.env，例如 OPENAI_API_KEY、OPENROUTER_API_KEY、API_SERVER_KEY。读取动作只返回是否已配置，不返回明文。",
+        "actions": [
+          {
+            "action": "set",
+            "kind": "write",
+            "label": "设置环境变量",
+            "args": [
+              {
+                "name": "key",
+                "label": "键",
+                "type": "text",
+                "required": true,
+                "placeholder": "OPENAI_API_KEY"
+              },
+              {
+                "name": "value",
+                "label": "值",
+                "type": "password",
+                "required": false,
+                "placeholder": "sk-...",
+                "sensitive": true
+              }
+            ]
+          },
+          {
+            "action": "get",
+            "kind": "read",
+            "label": "读取环境变量状态",
+            "args": [
+              {
+                "name": "key",
+                "label": "键",
+                "type": "text",
+                "required": true,
+                "placeholder": "OPENAI_API_KEY"
+              }
+            ]
+          },
+          {
+            "action": "delete",
+            "kind": "delete",
+            "label": "删除环境变量",
+            "args": [
+              {
+                "name": "key",
+                "label": "键",
+                "type": "text",
+                "required": true,
+                "placeholder": "OPENAI_API_KEY"
+              }
+            ]
+          },
+          {
+            "action": "list",
+            "kind": "read",
+            "label": "列出 .env 配置状态",
+            "args": []
+          }
+        ]
+      }
+    ]
+  },
+  "en": {
+    "resources": [
+      {
+        "resource": "provider",
+        "label": "Main Provider",
+        "description": "Manage Hermes native model.provider / model.base_url directly. Named providers are stored in Hermes native providers.",
+        "actions": [
+          {
+            "action": "set-main",
+            "kind": "write",
+            "label": "Set Main Provider",
+            "args": [
+              {
+                "name": "provider",
+                "label": "Provider",
+                "type": "text",
+                "required": true,
+                "placeholder": "openai / openrouter / anthropic / custom / ccswitch"
+              },
+              {
+                "name": "base_url",
+                "label": "Base URL",
+                "type": "text",
+                "required": false,
+                "placeholder": "http://host/v1"
+              },
+              {
+                "name": "api_mode",
+                "label": "API Mode",
+                "type": "select",
+                "required": false,
+                "options": [
+                  { "label": "Chat Completions", "value": "chat_completions" },
+                  { "label": "Codex Responses", "value": "codex_responses" },
+                  { "label": "Anthropic Messages", "value": "anthropic_messages" }
+                ],
+                "placeholder": "chat_completions"
+              },
+              {
+                "name": "key_env",
+                "label": "API Key Env",
+                "type": "text",
+                "required": false,
+                "placeholder": "CCSWITCH_API_KEY"
+              }
+            ]
+          },
+          {
+            "action": "get-main",
+            "kind": "read",
+            "label": "Get Main Provider",
+            "args": []
+          },
+          {
+            "action": "delete-main",
+            "kind": "delete",
+            "label": "Clear Provider Override",
+            "args": []
+          }
+        ]
+      },
+      {
+        "resource": "model",
+        "label": "Main Model",
+        "description": "Manage Hermes native model.default directly.",
+        "actions": [
+          {
+            "action": "set-main",
+            "kind": "write",
+            "label": "Set Main Model",
+            "args": [
+              {
+                "name": "model",
+                "label": "Model",
+                "type": "text",
+                "required": true,
+                "placeholder": "gpt-5.4"
+              }
+            ]
+          },
+          {
+            "action": "get-main",
+            "kind": "read",
+            "label": "Get Main Model",
+            "args": []
+          },
+          {
+            "action": "delete-main",
+            "kind": "delete",
+            "label": "Clear Model Override",
+            "args": []
+          }
+        ]
+      },
+      {
+        "resource": "env",
+        "label": ".env",
+        "description": "Manage Hermes native ~/.hermes/.env directly. Read actions only return configured status, never secret plaintext.",
+        "actions": [
+          {
+            "action": "set",
+            "kind": "write",
+            "label": "Set Env Var",
+            "args": [
+              {
+                "name": "key",
+                "label": "Key",
+                "type": "text",
+                "required": true,
+                "placeholder": "OPENAI_API_KEY"
+              },
+              {
+                "name": "value",
+                "label": "Value",
+                "type": "password",
+                "required": false,
+                "placeholder": "sk-...",
+                "sensitive": true
+              }
+            ]
+          },
+          {
+            "action": "get",
+            "kind": "read",
+            "label": "Get Env Var Status",
+            "args": [
+              {
+                "name": "key",
+                "label": "Key",
+                "type": "text",
+                "required": true,
+                "placeholder": "OPENAI_API_KEY"
+              }
+            ]
+          },
+          {
+            "action": "delete",
+            "kind": "delete",
+            "label": "Delete Env Var",
+            "args": [
+              {
+                "name": "key",
+                "label": "Key",
+                "type": "text",
+                "required": true,
+                "placeholder": "OPENAI_API_KEY"
+              }
+            ]
+          },
+          {
+            "action": "list",
+            "kind": "read",
+            "label": "List .env Status",
+            "args": []
+          }
+        ]
+      }
+    ]
+  }
+}

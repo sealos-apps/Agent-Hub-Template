@@ -2,7 +2,7 @@
   "id": "_template",
   "icon": "",
   "name": "Agent Template",
-  "desc": "Scaffold for adding a new agent to this repository.",
+  "desc": "Scaffold for adding a new Devbox agent adapter.",
   "version": "template",
   "status": "template",
   "image": "ghcr.io/gitlayzer/ubuntu:22.04-base",
@@ -10,8 +10,12 @@
   "category": "template",
   "repo_path": "agents/_template",
   "readme": "agents/_template/README.md",
+  "runtime": {
+    "kind": "service"
+  },
   "tags": [
     "template",
-    "scaffold"
+    "scaffold",
+    "devbox"
   ]
 }

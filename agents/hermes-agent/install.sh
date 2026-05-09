@@ -2,7 +2,8 @@
 set -euo pipefail
 
 HERMES_GIT_URL="${HERMES_GIT_URL:-https://github.com/NousResearch/hermes-agent.git}"
-HERMES_REF="${HERMES_REF:-v2026.4.16}"
+HERMES_BRANCH="${HERMES_BRANCH:-main}"
+HERMES_REF="${HERMES_REF:-59b56d445c34e1d4bf797f5345b802c7b5986c72}"
 HERMES_HOME="${HERMES_HOME:-/home/agent/.hermes}"
 HERMES_SRC="${HERMES_SRC:-/opt/hermes/src}"
 HERMES_VENV="${HERMES_VENV:-/opt/hermes/venv}"
@@ -16,6 +17,27 @@ log() {
 fail() {
   printf '[%s] [ERROR] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >&2
   exit 1
+}
+
+retry() {
+  local max_attempts="${RETRY_MAX_ATTEMPTS:-3}"
+  local attempt=1
+  local exit_code=0
+
+  while true; do
+    if "$@"; then
+      return 0
+    fi
+
+    exit_code=$?
+    if [[ "$attempt" -ge "$max_attempts" ]]; then
+      return "$exit_code"
+    fi
+
+    log "command failed (attempt ${attempt}/${max_attempts}), retrying: $*"
+    sleep $((attempt * 3))
+    attempt=$((attempt + 1))
+  done
 }
 
 prepare_install_env() {
@@ -40,15 +62,13 @@ install_uv() {
 
   log "installing uv"
   curl -LsSf https://astral.sh/uv/install.sh | sh
-
-  if [[ ! -x "$UV_BIN" ]]; then
-    fail "uv was not installed successfully"
-  fi
+  [[ -x "$UV_BIN" ]] || fail "uv was not installed successfully"
 }
 
 checkout_hermes_source() {
   rm -rf "$HERMES_SRC"
-  git clone --depth 1 --branch "$HERMES_REF" "$HERMES_GIT_URL" "$HERMES_SRC"
+  retry git -c http.version=HTTP/1.1 clone --branch "$HERMES_BRANCH" --single-branch "$HERMES_GIT_URL" "$HERMES_SRC"
+  git -C "$HERMES_SRC" checkout "$HERMES_REF"
 }
 
 install_hermes_runtime() {
@@ -73,27 +93,28 @@ write_default_config() {
   mkdir -p "$HERMES_HOME"
 
   if [[ ! -f "${HERMES_HOME}/config.yaml" ]]; then
-    cat >"${HERMES_HOME}/config.yaml" <<'EOF'
-model: gpt-5.4
-provider: custom
+    cat >"${HERMES_HOME}/config.yaml" <<'CFG'
+model:
+  default: gpt-5.4
+  provider: auto
 display:
   skin: default
 terminal:
   backend: local
-EOF
+CFG
   fi
 
   if [[ ! -f "${HERMES_HOME}/.env" ]]; then
-    cat >"${HERMES_HOME}/.env" <<'EOF'
-# Populate provider credentials or endpoint configuration before first real use.
-# Example custom endpoint values:
+    cat >"${HERMES_HOME}/.env" <<'ENVFILE'
+# Put Hermes provider credentials here, for example:
 # OPENAI_API_KEY=
-# OPENAI_BASE_URL=
+# OPENROUTER_API_KEY=
+# ANTHROPIC_API_KEY=
 API_SERVER_ENABLED=true
 API_SERVER_HOST=0.0.0.0
 API_SERVER_PORT=8642
 API_SERVER_KEY=change-me-local-dev
-EOF
+ENVFILE
   fi
 }
 
@@ -105,9 +126,7 @@ install_agent() {
   install_hermes_runtime
   write_default_config
 
-  if [[ ! -x "${HERMES_VENV}/bin/hermes" ]]; then
-    fail "hermes binary was not installed"
-  fi
+  [[ -x "${HERMES_VENV}/bin/hermes" ]] || fail "hermes binary was not installed"
 }
 
 main() {
@@ -115,12 +134,11 @@ main() {
   shift || true
 
   case "$command" in
-    install)
+    install|install-agent|agent)
       install_agent "$@"
       ;;
     *)
-      printf 'unknown install command: %s\n' "$command" >&2
-      exit 1
+      fail "unknown install command: ${command}"
       ;;
   esac
 }

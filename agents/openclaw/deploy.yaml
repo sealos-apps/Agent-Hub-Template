@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openclaw
+  labels:
+    app: openclaw
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openclaw
+  template:
+    metadata:
+      labels:
+        app: openclaw
+    spec:
+      containers:
+        - name: openclaw
+          image: ghcr.io/nightwhite/openclaw:dev
+          imagePullPolicy: IfNotPresent
+          args: ["start"]
+          workingDir: /workspace

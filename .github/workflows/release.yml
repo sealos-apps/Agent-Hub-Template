@@ -2,12 +2,10 @@ name: release-enabled-agents
 
 on:
   workflow_dispatch:
-    inputs:
-      image_tag:
-        description: Image tag to publish
-        required: true
-        type: string
   push:
+    branches:
+      - master
+      - main
     tags:
       - 'v*'
 
@@ -17,69 +15,67 @@ permissions:
 
 jobs:
   prepare:
+    if: github.event_name != 'push' || github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
       count: ${{ steps.matrix.outputs.count }}
-      image_tag: ${{ steps.tag.outputs.image_tag }}
       owner: ${{ steps.owner.outputs.owner }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate agent contracts
+        run: bash test/validate-agent-contract.sh
+
       - name: Resolve owner
         id: owner
         run: echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
-
-      - name: Resolve image tag
-        id: tag
-        run: |
-          if [[ -n "${{ github.event.inputs.image_tag || '' }}" ]]; then
-            echo "image_tag=${{ github.event.inputs.image_tag }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "image_tag=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-          fi
 
       - name: Generate agent matrix from registry
         id: matrix
         run: |
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
           import json
+          import subprocess
           from pathlib import Path
 
+          def load_yaml(path: Path) -> object:
+              try:
+                  import yaml
+              except ModuleNotFoundError:
+                  result = subprocess.run(
+                      [
+                          "ruby",
+                          "-rjson",
+                          "-ryaml",
+                          "-e",
+                          "puts JSON.generate(YAML.safe_load(File.read(ARGV[0]), permitted_classes: [], permitted_symbols: [], aliases: true))",
+                          str(path),
+                      ],
+                      check=True,
+                      text=True,
+                      stdout=subprocess.PIPE,
+                  )
+                  return json.loads(result.stdout)
+              return yaml.safe_load(path.read_text(encoding="utf-8"))
+
           registry_path = Path("registry/agents.yaml")
-          items = []
-          current = None
-
-          for raw_line in registry_path.read_text().splitlines():
-              line = raw_line.strip()
-              if not line or line.startswith("#") or line == "agents:":
-                  continue
-              if line.startswith("- "):
-                  if current:
-                      items.append(current)
-                  current = {}
-                  line = line[2:]
-              if ":" not in line:
-                  continue
-              key, value = line.split(":", 1)
-              key = key.strip()
-              value = value.strip()
-              if value.lower() == "true":
-                  parsed = True
-              elif value.lower() == "false":
-                  parsed = False
-              else:
-                  parsed = value.strip("\"'")
-              current[key] = parsed
-
-          if current:
-              items.append(current)
+          data = load_yaml(registry_path)
+          if not isinstance(data, dict):
+              raise SystemExit(f"{registry_path}: top-level YAML must be a mapping")
+          items = data.get("agents")
+          if not isinstance(items, list):
+              raise SystemExit(f"{registry_path}: agents must be a list")
+          for index, item in enumerate(items):
+              if not isinstance(item, dict):
+                  raise SystemExit(f"{registry_path}: agents[{index}] must be a mapping")
 
           enabled = [
               {
                   "name": item["name"],
                   "path": item["path"],
+                  "version": json.loads(Path(item["path"], "index.json").read_text())["version"],
               }
               for item in items
               if item.get("enabled") is True
@@ -110,13 +106,106 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build release image
+      - name: Resolve image tags
+        id: tags
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          AGENT_VERSION: ${{ matrix.version }}
         run: |
+          if [[ "$EVENT_NAME" == "push" && "$REF_TYPE" == "branch" ]]; then
+            short_sha="${GITHUB_SHA::12}"
+            {
+              echo "tags<<EOF"
+              echo "dev-${short_sha}"
+              echo "dev"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo "tags<<EOF"
+              echo "$AGENT_VERSION"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build release image
+        env:
+          IMAGE_BASE: ghcr.io/${{ needs.prepare.outputs.owner }}/${{ matrix.name }}
+          IMAGE_TAGS: ${{ steps.tags.outputs.tags }}
+        run: |
+          tag_args=()
+          while IFS= read -r tag; do
+            [[ -n "$tag" ]] || continue
+            tag_args+=(--tag "${IMAGE_BASE}:${tag}")
+          done <<< "$IMAGE_TAGS"
+
           docker build \
             --file "${{ matrix.path }}/Dockerfile" \
-            --tag "ghcr.io/${{ needs.prepare.outputs.owner }}/${{ matrix.name }}:${{ needs.prepare.outputs.image_tag }}" \
+            "${tag_args[@]}" \
             .
 
       - name: Push image
+        env:
+          IMAGE_BASE: ghcr.io/${{ needs.prepare.outputs.owner }}/${{ matrix.name }}
+          IMAGE_TAGS: ${{ steps.tags.outputs.tags }}
         run: |
-          docker push "ghcr.io/${{ needs.prepare.outputs.owner }}/${{ matrix.name }}:${{ needs.prepare.outputs.image_tag }}"
+          while IFS= read -r tag; do
+            [[ -n "$tag" ]] || continue
+            docker push "${IMAGE_BASE}:${tag}"
+          done <<< "$IMAGE_TAGS"
+
+  sync-dev-templates:
+    needs:
+      - prepare
+      - release
+    if: github.event_name == 'push' && github.ref_type == 'branch' && needs.prepare.outputs.count != '0'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sync dev image refs
+        env:
+          OWNER: ${{ needs.prepare.outputs.owner }}
+          MATRIX: ${{ needs.prepare.outputs.matrix }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          owner = os.environ["OWNER"]
+          matrix = json.loads(os.environ["MATRIX"])
+          tag = f"dev-{os.environ['GITHUB_SHA'][:12]}"
+
+          for item in matrix["include"]:
+              name = str(item["name"])
+              path = Path(str(item["path"]))
+              image = f"ghcr.io/{owner}/{name}:{tag}"
+
+              index_path = path / "index.json"
+              index = json.loads(index_path.read_text())
+              index["image"] = image
+              index_path.write_text(json.dumps(index, indent=2) + "\n")
+
+              deploy_path = path / "deploy.yaml"
+              deploy = deploy_path.read_text()
+              deploy = re.sub(r"(^\s*image:\s*).+$", rf"\1{image}", deploy, count=1, flags=re.MULTILINE)
+              deploy_path.write_text(deploy)
+          PY
+
+      - name: Commit synced templates
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add agents/*/index.json agents/*/deploy.yaml
+          git commit -m "chore: sync dev agent image refs [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

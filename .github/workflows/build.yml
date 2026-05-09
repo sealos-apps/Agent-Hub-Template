@@ -1,4 +1,4 @@
-name: build-enabled-agents
+name: build-agent-adapters
 
 on:
   push:
@@ -14,6 +14,7 @@ permissions:
 
 jobs:
   prepare:
+    if: github.event_name != 'push' || github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
@@ -21,54 +22,132 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Generate agent matrix from registry
+      - name: Validate agent contracts
+        run: bash test/validate-agent-contract.sh
+
+      - name: Generate agent matrix
         id: matrix
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before || '' }}
+          HEAD_SHA: ${{ github.sha }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
         run: |
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
           import json
+          import os
+          import subprocess
           from pathlib import Path
 
-          registry_path = Path("registry/agents.yaml")
-          items = []
-          current = None
 
-          for raw_line in registry_path.read_text().splitlines():
-              line = raw_line.strip()
-              if not line or line.startswith("#") or line == "agents:":
-                  continue
-              if line.startswith("- "):
-                  if current:
-                      items.append(current)
-                  current = {}
-                  line = line[2:]
-              if ":" not in line:
-                  continue
-              key, value = line.split(":", 1)
-              key = key.strip()
-              value = value.strip()
-              if value.lower() == "true":
-                  parsed = True
-              elif value.lower() == "false":
-                  parsed = False
-              else:
-                  parsed = value.strip("\"'")
-              current[key] = parsed
+          def load_yaml(path: Path) -> object:
+              try:
+                  import yaml
+              except ModuleNotFoundError:
+                  result = subprocess.run(
+                      [
+                          "ruby",
+                          "-rjson",
+                          "-ryaml",
+                          "-e",
+                          "puts JSON.generate(YAML.safe_load(File.read(ARGV[0]), permitted_classes: [], permitted_symbols: [], aliases: true))",
+                          str(path),
+                      ],
+                      check=True,
+                      text=True,
+                      stdout=subprocess.PIPE,
+                  )
+                  return json.loads(result.stdout)
+              return yaml.safe_load(path.read_text(encoding="utf-8"))
 
-          if current:
-              items.append(current)
 
-          enabled = [
-              {
-                  "name": item["name"],
-                  "path": item["path"],
-              }
-              for item in items
-              if item.get("enabled") is True
+          def parse_registry(path: Path) -> list[dict[str, object]]:
+              data = load_yaml(path)
+              if not isinstance(data, dict):
+                  raise SystemExit(f"{path}: top-level YAML must be a mapping")
+              items = data.get("agents")
+              if not isinstance(items, list):
+                  raise SystemExit(f"{path}: agents must be a list")
+              for index, item in enumerate(items):
+                  if not isinstance(item, dict):
+                      raise SystemExit(f"{path}: agents[{index}] must be a mapping")
+              return items
+
+
+          def is_all_zero(value: str) -> bool:
+              return bool(value) and set(value) == {"0"}
+
+
+          def git_changed_files(base: str, head: str) -> list[str]:
+              if not base or not head or is_all_zero(base):
+                  return []
+              result = subprocess.run(
+                  ["git", "diff", "--name-only", f"{base}...{head}"],
+                  check=True,
+                  text=True,
+                  stdout=subprocess.PIPE,
+              )
+              return [line for line in result.stdout.splitlines() if line]
+
+
+          agents = [
+              {"name": item["name"], "path": item["path"]}
+              for item in parse_registry(Path("registry/agents.yaml"))
+              if item.get("name") and item.get("path") and Path(str(item["path"]), "Dockerfile").exists()
           ]
 
-          print(f"matrix={json.dumps({'include': enabled}, separators=(',', ':'))}")
-          print(f"count={len(enabled)}")
+          event_name = os.environ.get("EVENT_NAME", "")
+          build_all_from_ref = False
+          if event_name == "pull_request":
+              changed_files = git_changed_files(
+                  os.environ.get("PR_BASE_SHA", ""),
+                  os.environ.get("PR_HEAD_SHA", ""),
+              )
+          elif event_name == "push":
+              build_all_from_ref = is_all_zero(os.environ.get("BEFORE_SHA", ""))
+              changed_files = git_changed_files(
+                  os.environ.get("BEFORE_SHA", ""),
+                  os.environ.get("HEAD_SHA", ""),
+              )
+          else:
+              changed_files = []
+
+          build_all = (
+              event_name == "workflow_dispatch"
+              or build_all_from_ref
+              or "registry/agents.yaml" in changed_files
+              or ".github/workflows/build.yml" in changed_files
+              or any(path.startswith("agents/_template/") for path in changed_files)
+          )
+
+          if build_all:
+              selected = agents
+          else:
+              selected = [
+                  agent
+                  for agent in agents
+                  if any(
+                      path == str(agent["path"]) or path.startswith(f"{agent['path']}/")
+                      for path in changed_files
+                  )
+              ]
+
+          print(f"matrix={json.dumps({'include': selected}, separators=(',', ':'))}")
+          print(f"count={len(selected)}")
+          summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary_path:
+              selected_names = ", ".join(str(item["name"]) for item in selected) or "(none)"
+              Path(summary_path).write_text(
+                  f"### Agent build matrix\n\n"
+                  f"- Event: `{event_name}`\n"
+                  f"- Selected agents: {selected_names}\n"
+                  f"- Changed files: {len(changed_files)}\n",
+                  encoding="utf-8",
+              )
           PY
 
   build:

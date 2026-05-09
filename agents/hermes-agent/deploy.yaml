@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: hermes
+  name: hermes-agent
   labels:
-    app: hermes
+    app: hermes-agent
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: hermes
+      app: hermes-agent
   template:
     metadata:
       labels:
-        app: hermes
+        app: hermes-agent
     spec:
       containers:
-        - name: hermes
-          image: agent-hub/hermes:dev
+        - name: hermes-agent
+          image: ghcr.io/nightwhite/hermes-agent:dev
           imagePullPolicy: IfNotPresent
           env:
             - name: API_SERVER_ENABLED
@@ -27,5 +27,5 @@ spec:
               value: "8642"
             - name: API_SERVER_KEY
               value: "change-me-local-dev"
-          args: ["gateway"]
+          args: ["start"]
           workingDir: /workspace

@@ -31,7 +31,7 @@ install_agent_files() {
 set -euo pipefail
 
 echo "change-me agent scaffold is not implemented yet."
-echo "Replace agents/change-me/install.sh and install the real agent runtime."
+echo "Replace this agent's install.sh and install the real agent runtime."
 exit 1
 EOF
 

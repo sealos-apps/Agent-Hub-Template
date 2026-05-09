@@ -1,0 +1,22 @@
+{
+  "id": "hermes-agent",
+  "icon": "https://github.com/NousResearch/hermes-agent/blob/main/assets/banner.png?raw=true",
+  "name": "Hermes Agent",
+  "desc": "Hermes adapter for Sealos Devbox with fixed start/config contracts.",
+  "version": "main-59b56d44",
+  "status": "enabled",
+  "image": "ghcr.io/nightwhite/hermes-agent:dev",
+  "base_image": "ghcr.io/gitlayzer/ubuntu:22.04-base",
+  "category": "platform-agent",
+  "repo_path": "agents/hermes-agent",
+  "readme": "agents/hermes-agent/README.md",
+  "runtime": {
+    "kind": "service"
+  },
+  "tags": [
+    "python",
+    "gateway",
+    "provider-native",
+    "devbox"
+  ]
+}

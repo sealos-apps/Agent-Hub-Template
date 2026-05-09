@@ -1,0 +1,22 @@
+{
+  "id": "openclaw",
+  "icon": "https://github.com/openclaw/openclaw/raw/main/.github/assets/openclaw-logo.png",
+  "name": "OpenClaw",
+  "desc": "OpenClaw gateway adapter for Sealos Devbox with fixed start/config contracts.",
+  "version": "2026.4.24",
+  "status": "experimental",
+  "image": "ghcr.io/nightwhite/openclaw:dev",
+  "base_image": "ghcr.io/gitlayzer/ubuntu:22.04-base",
+  "category": "platform-agent",
+  "repo_path": "agents/openclaw",
+  "readme": "agents/openclaw/README.md",
+  "runtime": {
+    "kind": "service"
+  },
+  "tags": [
+    "node",
+    "gateway",
+    "provider-native",
+    "devbox"
+  ]
+}

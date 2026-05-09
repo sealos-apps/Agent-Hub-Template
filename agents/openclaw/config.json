@@ -1,0 +1,684 @@
+{
+  "schemaVersion": "devbox-agent-config.v1",
+  "script": "/opt/agent/config.sh",
+  "zh": {
+    "resources": [
+      {
+        "resource": "model",
+        "label": "主模型",
+        "description": "直接维护 OpenClaw 原生 agents.defaults.model.primary。",
+        "actions": [
+          {
+            "action": "set-main",
+            "kind": "write",
+            "label": "设置主模型",
+            "args": [
+              {
+                "name": "provider",
+                "label": "Provider",
+                "type": "text",
+                "required": true,
+                "placeholder": "openai / anthropic / openrouter"
+              },
+              {
+                "name": "model",
+                "label": "模型",
+                "type": "text",
+                "required": true,
+                "placeholder": "gpt-5.4"
+              }
+            ]
+          },
+          {
+            "action": "get-main",
+            "kind": "read",
+            "label": "读取主模型",
+            "args": []
+          }
+        ]
+      },
+      {
+        "resource": "provider",
+        "label": "Provider 覆盖",
+        "description": "直接维护 OpenClaw 原生 models.providers.<id> 的 endpoint / api 配置，以及 models.providers.<id>.apiKey。",
+        "actions": [
+          {
+            "action": "set",
+            "kind": "write",
+            "label": "设置 Provider",
+            "args": [
+              {
+                "name": "provider",
+                "label": "Provider ID",
+                "type": "text",
+                "required": true,
+                "placeholder": "openai"
+              },
+              {
+                "name": "base_url",
+                "label": "Base URL",
+                "type": "text",
+                "required": false,
+                "placeholder": "https://api.example.com/v1"
+              },
+              {
+                "name": "api_mode",
+                "label": "API 模式",
+                "type": "select",
+                "required": false,
+                "options": [
+                  {
+                    "label": "OpenAI Responses",
+                    "value": "openai-responses"
+                  },
+                  {
+                    "label": "OpenAI Completions",
+                    "value": "openai-completions"
+                  },
+                  {
+                    "label": "Anthropic Messages",
+                    "value": "anthropic-messages"
+                  }
+                ],
+                "placeholder": "openai-responses"
+              }
+            ]
+          },
+          {
+            "action": "get",
+            "kind": "read",
+            "label": "读取 Provider",
+            "args": [
+              {
+                "name": "provider",
+                "label": "Provider ID",
+                "type": "text",
+                "required": true,
+                "placeholder": "openai"
+              }
+            ]
+          },
+          {
+            "action": "set-api-key",
+            "kind": "write",
+            "label": "设置 Provider API Key",
+            "args": [
+              {
+                "name": "provider",
+                "label": "Provider ID",
+                "type": "text",
+                "required": true,
+                "placeholder": "ccswitch"
+              },
+              {
+                "name": "api_key",
+                "label": "API Key",
+                "type": "password",
+                "required": true,
+                "placeholder": "sk-...",
+                "sensitive": true
+              }
+            ]
+          },
+          {
+            "action": "get-api-key",
+            "kind": "read",
+            "label": "读取 Provider API Key 状态",
+            "args": [
+              {
+                "name": "provider",
+                "label": "Provider ID",
+                "type": "text",
+                "required": true,
+                "placeholder": "ccswitch"
+              }
+            ]
+          },
+          {
+            "action": "delete-api-key",
+            "kind": "delete",
+            "label": "删除 Provider API Key",
+            "args": [
+              {
+                "name": "provider",
+                "label": "Provider ID",
+                "type": "text",
+                "required": true,
+                "placeholder": "ccswitch"
+              }
+            ]
+          },
+          {
+            "action": "delete",
+            "kind": "delete",
+            "label": "删除 Provider 覆盖",
+            "args": [
+              {
+                "name": "provider",
+                "label": "Provider ID",
+                "type": "text",
+                "required": true,
+                "placeholder": "openai"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "resource": "gateway",
+        "label": "Gateway",
+        "description": "维护 OpenClaw 原生 gateway.mode / gateway.bind / gateway.port 与网关 token。Token 读取动作只返回是否已配置，不返回明文。",
+        "actions": [
+          {
+            "action": "set-local",
+            "kind": "write",
+            "label": "设置本地 Gateway",
+            "args": [
+              {
+                "name": "bind",
+                "label": "Bind",
+                "type": "select",
+                "required": false,
+                "default": "lan",
+                "options": [
+                  {
+                    "label": "LAN",
+                    "value": "lan"
+                  },
+                  {
+                    "label": "Loopback",
+                    "value": "loopback"
+                  },
+                  {
+                    "label": "Auto",
+                    "value": "auto"
+                  },
+                  {
+                    "label": "Tailnet",
+                    "value": "tailnet"
+                  },
+                  {
+                    "label": "Custom",
+                    "value": "custom"
+                  }
+                ],
+                "placeholder": "lan"
+              },
+              {
+                "name": "port",
+                "label": "端口",
+                "type": "number",
+                "required": false,
+                "default": 18789,
+                "placeholder": "18789"
+              }
+            ]
+          },
+          {
+            "action": "get-local",
+            "kind": "read",
+            "label": "读取 Gateway",
+            "args": []
+          },
+          {
+            "action": "set-token",
+            "kind": "write",
+            "label": "设置 Gateway Token",
+            "args": [
+              {
+                "name": "token",
+                "label": "Token",
+                "type": "password",
+                "required": true,
+                "placeholder": "change-me-local-dev",
+                "sensitive": true
+              }
+            ]
+          },
+          {
+            "action": "get-token",
+            "kind": "read",
+            "label": "读取 Gateway Token 状态",
+            "args": []
+          },
+          {
+            "action": "delete-token",
+            "kind": "delete",
+            "label": "删除 Gateway Token",
+            "args": []
+          }
+        ]
+      },
+      {
+        "resource": "workspace",
+        "label": "工作目录",
+        "description": "直接维护 OpenClaw 原生 agents.defaults.workspace。",
+        "actions": [
+          {
+            "action": "set",
+            "kind": "write",
+            "label": "设置工作目录",
+            "args": [
+              {
+                "name": "path",
+                "label": "路径",
+                "type": "text",
+                "required": true,
+                "placeholder": "/workspace"
+              }
+            ]
+          },
+          {
+            "action": "get",
+            "kind": "read",
+            "label": "读取工作目录",
+            "args": []
+          }
+        ]
+      },
+      {
+        "resource": "env",
+        "label": ".env",
+        "description": "直接维护 OpenClaw 原生 ~/.openclaw/.env，例如 OPENCLAW_GATEWAY_TOKEN、OPENAI_API_KEY。读取动作只返回是否已配置，不返回明文。",
+        "actions": [
+          {
+            "action": "set",
+            "kind": "write",
+            "label": "设置环境变量",
+            "args": [
+              {
+                "name": "key",
+                "label": "键",
+                "type": "text",
+                "required": true,
+                "placeholder": "OPENAI_API_KEY"
+              },
+              {
+                "name": "value",
+                "label": "值",
+                "type": "password",
+                "required": false,
+                "placeholder": "sk-...",
+                "sensitive": true
+              }
+            ]
+          },
+          {
+            "action": "get",
+            "kind": "read",
+            "label": "读取环境变量状态",
+            "args": [
+              {
+                "name": "key",
+                "label": "键",
+                "type": "text",
+                "required": true,
+                "placeholder": "OPENAI_API_KEY"
+              }
+            ]
+          },
+          {
+            "action": "delete",
+            "kind": "delete",
+            "label": "删除环境变量",
+            "args": [
+              {
+                "name": "key",
+                "label": "键",
+                "type": "text",
+                "required": true,
+                "placeholder": "OPENAI_API_KEY"
+              }
+            ]
+          },
+          {
+            "action": "list",
+            "kind": "read",
+            "label": "列出 .env 配置状态",
+            "args": []
+          }
+        ]
+      }
+    ]
+  },
+  "en": {
+    "resources": [
+      {
+        "resource": "model",
+        "label": "Main Model",
+        "description": "Manage OpenClaw native agents.defaults.model.primary directly.",
+        "actions": [
+          {
+            "action": "set-main",
+            "kind": "write",
+            "label": "Set Main Model",
+            "args": [
+              {
+                "name": "provider",
+                "label": "Provider",
+                "type": "text",
+                "required": true,
+                "placeholder": "openai / anthropic / openrouter"
+              },
+              {
+                "name": "model",
+                "label": "Model",
+                "type": "text",
+                "required": true,
+                "placeholder": "gpt-5.4"
+              }
+            ]
+          },
+          {
+            "action": "get-main",
+            "kind": "read",
+            "label": "Get Main Model",
+            "args": []
+          }
+        ]
+      },
+      {
+        "resource": "provider",
+        "label": "Provider Override",
+        "description": "Manage OpenClaw native models.providers.<id> endpoint/api settings and models.providers.<id>.apiKey directly.",
+        "actions": [
+          {
+            "action": "set",
+            "kind": "write",
+            "label": "Set Provider",
+            "args": [
+              {
+                "name": "provider",
+                "label": "Provider ID",
+                "type": "text",
+                "required": true,
+                "placeholder": "openai"
+              },
+              {
+                "name": "base_url",
+                "label": "Base URL",
+                "type": "text",
+                "required": false,
+                "placeholder": "https://api.example.com/v1"
+              },
+              {
+                "name": "api_mode",
+                "label": "API Mode",
+                "type": "select",
+                "required": false,
+                "options": [
+                  {
+                    "label": "OpenAI Responses",
+                    "value": "openai-responses"
+                  },
+                  {
+                    "label": "OpenAI Completions",
+                    "value": "openai-completions"
+                  },
+                  {
+                    "label": "Anthropic Messages",
+                    "value": "anthropic-messages"
+                  }
+                ],
+                "placeholder": "openai-responses"
+              }
+            ]
+          },
+          {
+            "action": "get",
+            "kind": "read",
+            "label": "Get Provider",
+            "args": [
+              {
+                "name": "provider",
+                "label": "Provider ID",
+                "type": "text",
+                "required": true,
+                "placeholder": "openai"
+              }
+            ]
+          },
+          {
+            "action": "set-api-key",
+            "kind": "write",
+            "label": "Set Provider API Key",
+            "args": [
+              {
+                "name": "provider",
+                "label": "Provider ID",
+                "type": "text",
+                "required": true,
+                "placeholder": "ccswitch"
+              },
+              {
+                "name": "api_key",
+                "label": "API Key",
+                "type": "password",
+                "required": true,
+                "placeholder": "sk-...",
+                "sensitive": true
+              }
+            ]
+          },
+          {
+            "action": "get-api-key",
+            "kind": "read",
+            "label": "Get Provider API Key Status",
+            "args": [
+              {
+                "name": "provider",
+                "label": "Provider ID",
+                "type": "text",
+                "required": true,
+                "placeholder": "ccswitch"
+              }
+            ]
+          },
+          {
+            "action": "delete-api-key",
+            "kind": "delete",
+            "label": "Delete Provider API Key",
+            "args": [
+              {
+                "name": "provider",
+                "label": "Provider ID",
+                "type": "text",
+                "required": true,
+                "placeholder": "ccswitch"
+              }
+            ]
+          },
+          {
+            "action": "delete",
+            "kind": "delete",
+            "label": "Delete Provider Override",
+            "args": [
+              {
+                "name": "provider",
+                "label": "Provider ID",
+                "type": "text",
+                "required": true,
+                "placeholder": "openai"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "resource": "gateway",
+        "label": "Gateway",
+        "description": "Manage OpenClaw native gateway.mode, gateway.bind, gateway.port, and gateway token. Token read actions never return plaintext.",
+        "actions": [
+          {
+            "action": "set-local",
+            "kind": "write",
+            "label": "Set Local Gateway",
+            "args": [
+              {
+                "name": "bind",
+                "label": "Bind",
+                "type": "select",
+                "required": false,
+                "default": "lan",
+                "options": [
+                  {
+                    "label": "LAN",
+                    "value": "lan"
+                  },
+                  {
+                    "label": "Loopback",
+                    "value": "loopback"
+                  },
+                  {
+                    "label": "Auto",
+                    "value": "auto"
+                  },
+                  {
+                    "label": "Tailnet",
+                    "value": "tailnet"
+                  },
+                  {
+                    "label": "Custom",
+                    "value": "custom"
+                  }
+                ],
+                "placeholder": "lan"
+              },
+              {
+                "name": "port",
+                "label": "Port",
+                "type": "number",
+                "required": false,
+                "default": 18789,
+                "placeholder": "18789"
+              }
+            ]
+          },
+          {
+            "action": "get-local",
+            "kind": "read",
+            "label": "Get Gateway",
+            "args": []
+          },
+          {
+            "action": "set-token",
+            "kind": "write",
+            "label": "Set Gateway Token",
+            "args": [
+              {
+                "name": "token",
+                "label": "Token",
+                "type": "password",
+                "required": true,
+                "placeholder": "change-me-local-dev",
+                "sensitive": true
+              }
+            ]
+          },
+          {
+            "action": "get-token",
+            "kind": "read",
+            "label": "Get Gateway Token Status",
+            "args": []
+          },
+          {
+            "action": "delete-token",
+            "kind": "delete",
+            "label": "Delete Gateway Token",
+            "args": []
+          }
+        ]
+      },
+      {
+        "resource": "workspace",
+        "label": "Workspace",
+        "description": "Manage OpenClaw native agents.defaults.workspace directly.",
+        "actions": [
+          {
+            "action": "set",
+            "kind": "write",
+            "label": "Set Workspace",
+            "args": [
+              {
+                "name": "path",
+                "label": "Path",
+                "type": "text",
+                "required": true,
+                "placeholder": "/workspace"
+              }
+            ]
+          },
+          {
+            "action": "get",
+            "kind": "read",
+            "label": "Get Workspace",
+            "args": []
+          }
+        ]
+      },
+      {
+        "resource": "env",
+        "label": ".env",
+        "description": "Manage OpenClaw native ~/.openclaw/.env directly. Read actions only return configured status, never secret plaintext.",
+        "actions": [
+          {
+            "action": "set",
+            "kind": "write",
+            "label": "Set Env Var",
+            "args": [
+              {
+                "name": "key",
+                "label": "Key",
+                "type": "text",
+                "required": true,
+                "placeholder": "OPENAI_API_KEY"
+              },
+              {
+                "name": "value",
+                "label": "Value",
+                "type": "password",
+                "required": false,
+                "placeholder": "sk-...",
+                "sensitive": true
+              }
+            ]
+          },
+          {
+            "action": "get",
+            "kind": "read",
+            "label": "Get Env Var Status",
+            "args": [
+              {
+                "name": "key",
+                "label": "Key",
+                "type": "text",
+                "required": true,
+                "placeholder": "OPENAI_API_KEY"
+              }
+            ]
+          },
+          {
+            "action": "delete",
+            "kind": "delete",
+            "label": "Delete Env Var",
+            "args": [
+              {
+                "name": "key",
+                "label": "Key",
+                "type": "text",
+                "required": true,
+                "placeholder": "OPENAI_API_KEY"
+              }
+            ]
+          },
+          {
+            "action": "list",
+            "kind": "read",
+            "label": "List .env Status",
+            "args": []
+          }
+        ]
+      }
+    ]
+  }
+}
