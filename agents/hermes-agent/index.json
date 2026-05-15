@@ -5,7 +5,7 @@
   "desc": "Hermes adapter for Sealos Devbox with fixed start/config contracts.",
   "version": "main-59b56d44",
   "status": "enabled",
-  "image": "ghcr.io/gitlayzer/hermes-agent:dev-7679be68c264",
+  "image": "ghcr.io/gitlayzer/hermes-agent:dev-95e56bbc43d7",
   "base_image": "ghcr.io/gitlayzer/ubuntu:22.04-base",
   "category": "platform-agent",
   "repo_path": "agents/hermes-agent",
