@@ -121,7 +121,7 @@ Required metadata includes:
 - `regionModelPresets`
 
 The template image must match `agents/<agent>/index.json.image`. Release
-automation keeps both files synchronized after dev image publishing.
+automation keeps both files synchronized after version image publishing.
 
 `template.yaml` is the metadata source for local manifests:
 

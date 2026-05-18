@@ -14,9 +14,8 @@
 
 ## Upstream Pin
 
-- npm package: `openclaw@2026.4.24`
-- reference repo head used for study: `3b5463591be93c676a074134c5e384f8024a6945`
-- reference repo package version: `2026.4.26` (not published to npm at the time of this adapter update)
+- npm package: `openclaw@2026.5.12`
+- reference repo head used for study: `e973aa278f18967789a3896fa2826607f7805cb6`
 
 ## 运行方式
 

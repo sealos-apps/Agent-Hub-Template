@@ -31,8 +31,8 @@ ENV AGENT_NAME=hermes-agent \
 LABEL org.opencontainers.image.title="Hermes Agent" \
       org.opencontainers.image.description="Hermes adapter for Agent Hub" \
       org.opencontainers.image.source="agents/hermes-agent" \
-      org.opencontainers.image.version="main-59b56d44" \
-      org.sealos.agent.version="main-59b56d44" \
+      org.opencontainers.image.version="0.14.0" \
+      org.sealos.agent.version="0.14.0" \
       org.sealos.ai-agent-switch.version="${AI_AGENT_SWITCH_VERSION}" \
       org.sealos.ai-agent-switch.metadata="${AI_AGENT_SWITCH_METADATA}"
 

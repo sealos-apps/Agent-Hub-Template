@@ -13,8 +13,9 @@
 
 ## Upstream Pin
 
-- upstream branch: `main`
-- pinned ref: `59b56d445c34e1d4bf797f5345b802c7b5986c72`
+- upstream tag: `v2026.5.16`
+- package version: `0.14.0`
+- pinned ref: `a91a57fa5a13d516c38b07a141a9ce8a3daabeb0`
 
 ## 运行方式
 

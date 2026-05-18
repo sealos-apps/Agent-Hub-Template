@@ -160,25 +160,13 @@ jobs:
       - name: Resolve image tags
         id: tags
         env:
-          EVENT_NAME: ${{ github.event_name }}
-          REF_TYPE: ${{ github.ref_type }}
           AGENT_VERSION: ${{ matrix.version }}
         run: |
-          if [[ "$EVENT_NAME" == "push" && "$REF_TYPE" == "branch" ]]; then
-            short_sha="${GITHUB_SHA::12}"
-            {
-              echo "tags<<EOF"
-              echo "dev-${short_sha}"
-              echo "dev"
-              echo "EOF"
-            } >> "$GITHUB_OUTPUT"
-          else
-            {
-              echo "tags<<EOF"
-              echo "$AGENT_VERSION"
-              echo "EOF"
-            } >> "$GITHUB_OUTPUT"
-          fi
+          {
+            echo "tags<<EOF"
+            echo "$AGENT_VERSION"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Build release image
         env:
@@ -210,7 +198,7 @@ jobs:
             docker push "${IMAGE_BASE}:${tag}"
           done <<< "$IMAGE_TAGS"
 
-  sync-dev-templates:
+  sync-version-templates:
     needs:
       - prepare
       - release
@@ -222,7 +210,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Sync dev image refs
+      - name: Sync version image refs
         env:
           OWNER: ${{ needs.prepare.outputs.owner }}
           MATRIX: ${{ needs.prepare.outputs.matrix }}
@@ -236,11 +224,10 @@ jobs:
 
           owner = os.environ["OWNER"]
           matrix = json.loads(os.environ["MATRIX"])
-          tag = f"dev-{os.environ['GITHUB_SHA'][:12]}"
-
           for item in matrix["include"]:
               name = str(item["name"])
               path = Path(str(item["path"]))
+              tag = str(item["version"])
               image = f"ghcr.io/{owner}/{name}:{tag}"
 
               index_path = path / "index.json"
@@ -265,5 +252,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add agents/*/index.json agents/*/template.yaml
-          git commit -m "chore: sync dev agent image refs"
+          git commit -m "chore: sync agent version image refs"
           git push origin "HEAD:${GITHUB_REF_NAME}"

@@ -116,6 +116,10 @@ for key in ("id", "name", "version", "image", "repo_path", "readme"):
     if not data.get(key):
         raise SystemExit(f"{path}: missing required key {key}")
 if data.get("id") != "_template":
+    version = str(data["version"])
+    image = str(data["image"])
+    if not image.endswith(f":{version}"):
+        raise SystemExit(f"{path}: image tag must match version {version}")
     switch_version = data.get("ai_agent_switch_version")
     if not switch_version:
         raise SystemExit(f"{path}: missing required key ai_agent_switch_version")

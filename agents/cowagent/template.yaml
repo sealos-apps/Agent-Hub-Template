@@ -2,7 +2,7 @@ id: cowagent
 name: CowAgent
 shortName: CowAgent
 description: CowAgent Web console assistant with skills, memory, tools, and multi-channel integrations.
-image: ghcr.io/gitlayzer/cowagent:dev-719f5ae916cb
+image: ghcr.io/gitlayzer/cowagent:2.0.8
 port: 9899
 defaultArgs:
   - start

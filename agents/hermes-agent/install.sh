@@ -2,8 +2,8 @@
 set -euo pipefail
 
 HERMES_GIT_URL="${HERMES_GIT_URL:-https://github.com/NousResearch/hermes-agent.git}"
-HERMES_BRANCH="${HERMES_BRANCH:-main}"
-HERMES_REF="${HERMES_REF:-59b56d445c34e1d4bf797f5345b802c7b5986c72}"
+HERMES_BRANCH="${HERMES_BRANCH:-v2026.5.16}"
+HERMES_REF="${HERMES_REF:-a91a57fa5a13d516c38b07a141a9ce8a3daabeb0}"
 HERMES_HOME="${HERMES_HOME:-/home/agent/.hermes}"
 HERMES_SRC="${HERMES_SRC:-/opt/hermes/src}"
 HERMES_VENV="${HERMES_VENV:-/opt/hermes/venv}"
