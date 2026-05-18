@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: hermes-agent
-          image: ghcr.io/gitlayzer/hermes-agent:dev-95e56bbc43d7
+          image: ghcr.io/nightwhite/hermes-agent:dev-9be0d3087285
           imagePullPolicy: IfNotPresent
           env:
             - name: API_SERVER_ENABLED
@@ -28,7 +28,10 @@ spec:
             - name: API_SERVER_PORT
               value: "8642"
             - name: API_SERVER_KEY
-              value: "change-me-local-dev"
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-agent-secrets
+                  key: api-server-key
             - name: AGENT_PORT
               value: "8642"
             - name: AGENT_LOG_LEVEL
@@ -48,6 +51,18 @@ spec:
           emptyDir: {}
         - name: hermes-data
           emptyDir: {}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: hermes-agent-secrets
+  labels:
+    app: hermes-agent
+    app.kubernetes.io/name: hermes-agent
+    app.kubernetes.io/component: agent
+type: Opaque
+stringData:
+  api-server-key: change-me
 ---
 apiVersion: v1
 kind: Service

@@ -5,9 +5,9 @@
 当前实现遵守第一阶段标准：
 
 - 固定入口：`entrypoint.sh start`
-- 固定配置入口：`config.sh`
-- 前端 manifest：`/opt/agent/config.json`
-- `config.sh` stdout 固定返回 JSON envelope
+- 镜像内置 `ai-agent-switch`
+- Agent Hub 通过 `ai-agent-switch agent-hub init` 写入模型配置
+- 当前模型通过 `ai-agent-switch client show hermes --json` 读取
 - 不承诺部署时透传任意 Hermes CLI 参数
 - 配置直接落到 Hermes 原生 `~/.hermes/config.yaml` 与 `~/.hermes/.env`
 
@@ -21,14 +21,22 @@
 ### 默认启动
 
 ```bash
-docker run --rm -p 127.0.0.1:28642:8642 agent-hub/hermes-agent:dev
+docker run --rm \
+  -p 127.0.0.1:28642:8642 \
+  -e API_SERVER_KEY=sk-local-hermes \
+  agent-hub/hermes-agent:dev
 ```
 
 等价于：
 
 ```bash
-docker run --rm -p 127.0.0.1:28642:8642 agent-hub/hermes-agent:dev start
+docker run --rm \
+  -p 127.0.0.1:28642:8642 \
+  -e API_SERVER_KEY=sk-local-hermes \
+  agent-hub/hermes-agent:dev start
 ```
+
+默认启动必须通过运行时环境变量或 Kubernetes Secret 提供 `API_SERVER_KEY`。
 
 镜像内部固定执行：
 
@@ -48,55 +56,45 @@ docker run --rm -it agent-hub/hermes-agent:dev shell
 docker run --rm agent-hub/hermes-agent:dev run version
 ```
 
-## 配置方式
+## 模型配置方式
 
-Hermes 这一层不再维护任何仓库私有中间文件，直接使用原生配置：
+Hermes 这一层不再维护仓库私有配置脚本，模型初始化和切换统一交给 `ai-agent-switch`，最终仍然写入 Hermes 原生配置：
 
 - `~/.hermes/config.yaml`
 - `~/.hermes/.env`
 
-### 设置主 Provider
+### 初始化或切换模型
 
 ```bash
-docker run --rm agent-hub/hermes-agent:dev config provider set-main openai
+docker run --rm \
+  -e CCSWITCH_API_KEY=sk-local-test \
+  agent-hub/hermes-agent:dev \
+  ai-agent-switch agent-hub init \
+    --client hermes \
+    --provider-id ccswitch \
+    --provider-name CCSwitch \
+    --model-type openai-chat-compatible \
+    --base-url http://host.docker.internal:15721/v1 \
+    --api-key-env CCSWITCH_API_KEY \
+    --model gpt-5.4 \
+    --available-model gpt-5.4 \
+    -y \
+    --json
 ```
 
-自定义 OpenAI-compatible endpoint：
+这个命令会写入 Hermes 原生 `providers.ccswitch`，并设置 `model.provider = ccswitch`、`model.default = gpt-5.4`。密钥通过环境变量引用，不写入明文 token。
+
+### 查看当前模型
 
 ```bash
-docker run --rm agent-hub/hermes-agent:dev config provider set-main custom http://host.docker.internal:11434/v1
+docker run --rm agent-hub/hermes-agent:dev ai-agent-switch client show hermes --json
 ```
 
-命名 provider，例如 ccswitch：
+### Agent Hub 初始化命令自检
 
 ```bash
-docker run --rm agent-hub/hermes-agent:dev config provider set-main ccswitch http://host.docker.internal:15721/v1 chat_completions CCSWITCH_API_KEY
+docker run --rm agent-hub/hermes-agent:dev ai-agent-switch agent-hub init --help
 ```
-
-这个命令会写入 Hermes 当前原生 `providers.ccswitch`，并保留 `model.provider = ccswitch`。
-
-### 设置主模型
-
-```bash
-docker run --rm agent-hub/hermes-agent:dev config model set-main gpt-5.4
-```
-
-### 设置凭据或 API Server 相关环境变量
-
-```bash
-docker run --rm agent-hub/hermes-agent:dev config env set OPENAI_API_KEY sk-xxx
-docker run --rm agent-hub/hermes-agent:dev config env set API_SERVER_KEY change-me-local-dev
-```
-
-### 查看当前配置
-
-```bash
-docker run --rm agent-hub/hermes-agent:dev config provider get-main
-docker run --rm agent-hub/hermes-agent:dev config model get-main
-docker run --rm agent-hub/hermes-agent:dev config env list
-```
-
-所有配置命令的 stdout 都是统一 JSON。读取 `.env` 时只返回是否已配置和掩码，不返回密钥明文。
 
 ## 本地持久化测试
 
@@ -107,11 +105,25 @@ docker run -d \
   --name hermes-local \
   -p 127.0.0.1:28642:8642 \
   -v "$PWD/.tmp/hermes-home:/home/agent/.hermes" \
-  agent-hub/hermes-agent:dev
+  -e API_SERVER_KEY=sk-local-hermes \
+  -e CCSWITCH_API_KEY=sk-local-test \
+  agent-hub/hermes-agent:dev \
+  bash -lc '
+    ai-agent-switch agent-hub init \
+      --client hermes \
+      --provider-id ccswitch \
+      --provider-name CCSwitch \
+      --model-type openai-chat-compatible \
+      --base-url http://host.docker.internal:15721/v1 \
+      --api-key-env CCSWITCH_API_KEY \
+      --model gpt-5.4 \
+      --available-model gpt-5.4 \
+      -y \
+      --json
+    exec /opt/agent/bin/start
+  '
 
-docker exec hermes-local /opt/agent/config.sh provider set-main ccswitch http://host.docker.internal:15721/v1 chat_completions CCSWITCH_API_KEY
-docker exec hermes-local /opt/agent/config.sh model set-main gpt-5.4
-docker exec hermes-local /opt/agent/config.sh env set CCSWITCH_API_KEY sk-local-test
+docker exec --user agent -e HOME=/home/agent hermes-local ai-agent-switch client show hermes --json
 ```
 
-Hermes gateway 是长驻进程，上游会在运行期重新读取 `config.yaml` 与 `.env`，所以配置修改围绕当前运行中的 gateway 生效，而不是依赖重新传启动参数。
+本地持久化测试建议在启动长驻 gateway 前完成 `init`，这和 Agent Hub 初始化容器配置的路径一致。

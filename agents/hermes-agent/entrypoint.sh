@@ -11,6 +11,9 @@ export AGENT_LOG_LEVEL="${AGENT_LOG_LEVEL:-info}"
 export PATH="${AGENT_HOME}/bin:${PATH}"
 
 mkdir -p "$AGENT_DATA_DIR" "$AGENT_WORKSPACE"
+if [[ "$(id -u)" -eq 0 ]] && id -u agent >/dev/null 2>&1; then
+  chown agent:agent "$AGENT_DATA_DIR" "$AGENT_WORKSPACE"
+fi
 
 run_as_agent() {
   exec runuser --preserve-environment -u agent -- env \

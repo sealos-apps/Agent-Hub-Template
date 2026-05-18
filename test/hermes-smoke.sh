@@ -5,11 +5,27 @@ IMAGE="${IMAGE:-agent-hub/hermes-agent:local}"
 CONTAINER="${CONTAINER:-hermes-smoke-$RANDOM}"
 HOST_PORT="${HOST_PORT:-28642}"
 DOCKER_PLATFORM="${DOCKER_PLATFORM:-linux/amd64}"
+HERMES_API_SERVER_KEY="${HERMES_API_SERVER_KEY:-hermes-smoke-local-token}"
 
 fail() {
   printf '[ERROR] %s\n' "$*" >&2
   exit 1
 }
+
+resolve_ai_agent_switch_version() {
+  if [[ -n "${AI_AGENT_SWITCH_VERSION:-}" ]]; then
+    printf '%s' "$AI_AGENT_SWITCH_VERSION"
+    return
+  fi
+
+  command -v npm >/dev/null 2>&1 || \
+    fail "AI_AGENT_SWITCH_VERSION is required when npm is not available"
+
+  npm view ai-agent-switch version || \
+    fail "failed to resolve AI_AGENT_SWITCH_VERSION from npm"
+}
+
+AI_AGENT_SWITCH_VERSION="$(resolve_ai_agent_switch_version)"
 
 rewrite_proxy_for_docker() {
   local value="${1:-}"
@@ -35,54 +51,7 @@ append_no_proxy_host() {
   esac
 }
 
-assert_success_json() {
-  local output="$1"
-  printf '%s' "$output" | python3 -c 'import json, sys
-payload = json.load(sys.stdin)
-assert payload.get("ok") is True, payload
-assert payload.get("applied") is True, payload
-assert "data" in payload, payload
-'
-}
-
-assert_error_json() {
-  local output="$1"
-  printf '%s' "$output" | python3 -c 'import json, sys
-payload = json.load(sys.stdin)
-assert payload.get("ok") is False, payload
-assert isinstance(payload.get("error"), dict), payload
-assert payload["error"].get("message"), payload
-'
-}
-
-run_config_json() {
-  local output
-  output="$(docker exec "$CONTAINER" /opt/agent/config.sh "$@")"
-  assert_success_json "$output"
-  printf '%s' "$output"
-}
-
-expect_config_error() {
-  local output
-  if output="$(docker exec "$CONTAINER" /opt/agent/config.sh "$@" 2>/dev/null)"; then
-    fail "config command unexpectedly succeeded: $*"
-  fi
-  assert_error_json "$output"
-}
-
 docker_proxy_args=()
-for key in http_proxy https_proxy all_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY no_proxy NO_PROXY; do
-  if [[ -n "${!key:-}" ]]; then
-    value="${!key}"
-    if [[ "$key" == "no_proxy" || "$key" == "NO_PROXY" ]]; then
-      value="$(append_no_proxy_host "$value")"
-    else
-      value="$(rewrite_proxy_for_docker "$value")"
-    fi
-    docker_proxy_args+=(--build-arg "${key}=${value}")
-  fi
-done
-
 docker_proxy_env=()
 for key in http_proxy https_proxy all_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY no_proxy NO_PROXY; do
   if [[ -n "${!key:-}" ]]; then
@@ -92,6 +61,7 @@ for key in http_proxy https_proxy all_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY no_
     else
       value="$(rewrite_proxy_for_docker "$value")"
     fi
+    docker_proxy_args+=(--build-arg "${key}=${value}")
     docker_proxy_env+=(-e "${key}=${value}")
   fi
 done
@@ -101,14 +71,39 @@ cleanup() {
 }
 trap cleanup EXIT
 
-printf '==> building %s (%s)\n' "$IMAGE" "$DOCKER_PLATFORM"
+verify_ai_agent_switch_agent_hub() {
+  local output
+  output="$(
+    docker run --rm --platform "$DOCKER_PLATFORM" "$IMAGE" bash -lc '
+      set -euo pipefail
+      verify_home="$(mktemp -d)"
+      trap "rm -rf \"$verify_home\"" EXIT
+      HOME="$verify_home" ai-agent-switch agent-hub init \
+        --client hermes \
+        --provider-id verify-aiproxy \
+        --provider-name Verify \
+        --model-type openai-chat-compatible \
+        --base-url http://127.0.0.1:1/v1 \
+        --api-key-env AIPROXY_API_KEY \
+        --model verify-model \
+        --available-model verify-model \
+        --json
+    '
+  )"
+  printf '%s' "$output" | grep -F '"requiresConfirmation": true' >/dev/null
+}
+
+printf '==> building %s (%s, ai-agent-switch %s)\n' "$IMAGE" "$DOCKER_PLATFORM" "$AI_AGENT_SWITCH_VERSION"
 docker build \
   --platform "$DOCKER_PLATFORM" \
   --add-host host.docker.internal:host-gateway \
+  --build-arg "AI_AGENT_SWITCH_VERSION=${AI_AGENT_SWITCH_VERSION}" \
   "${docker_proxy_args[@]+"${docker_proxy_args[@]}"}" \
   -f agents/hermes-agent/Dockerfile \
   -t "$IMAGE" \
   .
+
+verify_ai_agent_switch_agent_hub
 
 printf '==> starting %s\n' "$CONTAINER"
 docker run -d \
@@ -116,6 +111,7 @@ docker run -d \
   --add-host host.docker.internal:host-gateway \
   --name "$CONTAINER" \
   -p "127.0.0.1:${HOST_PORT}:8642" \
+  -e "API_SERVER_KEY=${HERMES_API_SERVER_KEY}" \
   "${docker_proxy_env[@]+"${docker_proxy_env[@]}"}" \
   "$IMAGE" >/dev/null
 
@@ -123,7 +119,7 @@ printf '==> waiting for Hermes API server\n'
 ready=0
 for _ in $(seq 1 30); do
   if curl --noproxy '*' -fsS --max-time 2 "http://127.0.0.1:${HOST_PORT}/v1/models" \
-    -H 'Authorization: Bearer change-me-local-dev' >/dev/null 2>&1; then
+    -H "Authorization: Bearer ${HERMES_API_SERVER_KEY}" >/dev/null 2>&1; then
     ready=1
     break
   fi
@@ -131,37 +127,21 @@ for _ in $(seq 1 30); do
 done
 [[ "$ready" -eq 1 ]] || fail "Hermes API server did not become ready"
 
-printf '==> checking runtime manifest and standard entrypoints\n'
-docker exec "$CONTAINER" cat /opt/agent/config.json | python3 -m json.tool >/dev/null
-docker exec "$CONTAINER" cat /opt/agent/config.json | python3 -c 'import json, sys; assert json.load(sys.stdin)["schemaVersion"] == "devbox-agent-config.v1"'
-docker exec "$CONTAINER" /opt/agent/entrypoint.sh run version >/dev/null
+printf '==> applying Agent Hub model through ai-agent-switch\n'
+docker exec --user agent -e HOME=/home/agent "$CONTAINER" ai-agent-switch agent-hub init \
+  --client hermes \
+  --provider-id aiproxy \
+  --provider-name "AI Proxy" \
+  --model-type openai-chat-compatible \
+  --base-url http://host.docker.internal:15721/v1 \
+  --api-key-env AIPROXY_API_KEY \
+  --model glm-4.6 \
+  --available-model glm-4.6 \
+  -y \
+  --json | python3 -c 'import json, sys; payload=json.load(sys.stdin); assert payload["applied"] is True, payload'
 
-printf '==> mutating Hermes native config through JSON protocol\n'
-run_config_json provider set-main ccswitch http://host.docker.internal:11434/v1 chat_completions CCSWITCH_API_KEY >/dev/null
-run_config_json model set-main gpt-5.4 >/dev/null
-secret_output="$(run_config_json env set CCSWITCH_API_KEY sk-local-test)"
-[[ "$secret_output" != *sk-local-test* ]] || fail "secret value leaked in env set output"
-run_config_json provider get-main >/dev/null
-run_config_json model get-main >/dev/null
-secret_output="$(run_config_json env get CCSWITCH_API_KEY)"
-[[ "$secret_output" != *sk-local-test* ]] || fail "secret value leaked in env get output"
-run_config_json env list >/dev/null
-expect_config_error model set-main
-
-printf '==> verifying config files\n'
-docker exec "$CONTAINER" sh -lc 'grep -q "provider: ccswitch" /home/agent/.hermes/config.yaml'
-docker exec "$CONTAINER" sh -lc 'grep -q "providers:" /home/agent/.hermes/config.yaml'
-docker exec "$CONTAINER" sh -lc 'grep -q "ccswitch:" /home/agent/.hermes/config.yaml'
-docker exec "$CONTAINER" sh -lc 'grep -q "base_url: http://host.docker.internal:11434/v1" /home/agent/.hermes/config.yaml'
-docker exec "$CONTAINER" sh -lc 'grep -q "api_mode: chat_completions" /home/agent/.hermes/config.yaml'
-docker exec "$CONTAINER" sh -lc 'grep -q "key_env: CCSWITCH_API_KEY" /home/agent/.hermes/config.yaml'
-docker exec "$CONTAINER" sh -lc 'grep -q "default: gpt-5.4" /home/agent/.hermes/config.yaml'
-docker exec "$CONTAINER" sh -lc 'grep -q "CCSWITCH_API_KEY=sk-local-test" /home/agent/.hermes/.env'
-docker exec "$CONTAINER" sh -lc 'test "$(stat -c %a /home/agent/.hermes)" = "700"'
-docker exec "$CONTAINER" sh -lc 'test "$(stat -c %a /home/agent/.hermes/.env)" = "600"'
-
-printf '==> checking Hermes API server again\n'
-curl --noproxy '*' -fsS --max-time 5 "http://127.0.0.1:${HOST_PORT}/v1/models" \
-  -H 'Authorization: Bearer change-me-local-dev' >/dev/null
+docker exec --user agent -e HOME=/home/agent "$CONTAINER" ai-agent-switch client show hermes --json | python3 -c 'import json, sys; payload=json.load(sys.stdin); assert payload["providerId"] == "aiproxy", payload; assert payload["modelId"] == "glm-4.6", payload'
+docker exec "$CONTAINER" sh -lc 'grep -q "provider: aiproxy" /home/agent/.hermes/config.yaml'
+docker exec "$CONTAINER" sh -lc 'grep -q "default: glm-4.6" /home/agent/.hermes/config.yaml'
 
 printf '==> Hermes smoke passed\n'

@@ -3,10 +3,12 @@ set -euo pipefail
 
 NODE_MAJOR="${NODE_MAJOR:-22}"
 OPENCLAW_VERSION="${OPENCLAW_VERSION:-2026.4.24}"
+AI_AGENT_SWITCH_VERSION="${AI_AGENT_SWITCH_VERSION:-}"
+AI_AGENT_SWITCH_SOURCE_URL="${AI_AGENT_SWITCH_SOURCE_URL:-}"
+AI_AGENT_SWITCH_SOURCE_REF="${AI_AGENT_SWITCH_SOURCE_REF:-}"
 OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-/home/agent/.openclaw}"
 OPENCLAW_CONFIG_PATH="${OPENCLAW_CONFIG_PATH:-${OPENCLAW_STATE_DIR}/openclaw.json}"
 OPENCLAW_WORKSPACE="${OPENCLAW_WORKSPACE:-/workspace}"
-OPENCLAW_GATEWAY_TOKEN="${OPENCLAW_GATEWAY_TOKEN:-change-me-local-dev}"
 OPENCLAW_PLUGIN_STAGE_DIR="${OPENCLAW_PLUGIN_STAGE_DIR:-/opt/openclaw/plugin-runtime-deps}"
 AGENT_HOME="${AGENT_HOME:-/opt/agent}"
 
@@ -28,6 +30,7 @@ install_system_packages() {
   apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
+    git \
     gnupg
   rm -rf /var/lib/apt/lists/*
 }
@@ -41,6 +44,62 @@ install_node() {
 install_openclaw_runtime() {
   npm install -g "openclaw@${OPENCLAW_VERSION}"
   command -v openclaw >/dev/null 2>&1 || fail "openclaw binary was not installed"
+}
+
+install_ai_agent_switch() {
+  [[ -n "$AI_AGENT_SWITCH_VERSION" ]] || fail "AI_AGENT_SWITCH_VERSION is required"
+  if [[ -n "$AI_AGENT_SWITCH_SOURCE_URL" ]]; then
+    install_ai_agent_switch_from_source
+  else
+    npm install -g "ai-agent-switch@${AI_AGENT_SWITCH_VERSION}"
+  fi
+  verify_ai_agent_switch_agent_hub
+}
+
+install_ai_agent_switch_from_source() {
+  local src_dir
+  local package_dir
+  local target
+  target="linux-$(uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/')"
+  src_dir="$(mktemp -d)"
+  git init "$src_dir"
+  (
+    cd "$src_dir"
+    git remote add origin "$AI_AGENT_SWITCH_SOURCE_URL"
+    git fetch --depth 1 origin "${AI_AGENT_SWITCH_SOURCE_REF:-HEAD}"
+    git checkout --detach FETCH_HEAD
+    npm install -g bun
+    bun install --frozen-lockfile
+    bun run npm:build-package -- --platform "$target" --out-dir dist/npm-packages --version "$AI_AGENT_SWITCH_VERSION"
+  )
+  package_dir="$src_dir/dist/npm-packages/ai-agent-switch-$target"
+  [[ -x "$package_dir/ai-agent-switch" ]] || fail "ai-agent-switch source binary was not built"
+  install -m 0755 "$package_dir/ai-agent-switch" /usr/local/bin/ai-agent-switch
+  rm -rf "$src_dir"
+}
+
+verify_ai_agent_switch_agent_hub() {
+  local verify_home
+  local output
+  verify_home="$(mktemp -d)"
+  output="$(
+    HOME="$verify_home" ai-agent-switch agent-hub init \
+      --client openclaw \
+      --provider-id verify-aiproxy \
+      --provider-name Verify \
+      --model-type openai-chat-compatible \
+      --base-url http://127.0.0.1:1/v1 \
+      --api-key-env AIPROXY_API_KEY \
+      --model verify-model \
+      --available-model verify-model \
+      --json
+  )" || {
+    rm -rf "$verify_home"
+    fail "ai-agent-switch agent-hub init verification failed"
+  }
+  rm -rf "$verify_home"
+  printf '%s' "$output" | grep -F '"requiresConfirmation": true' >/dev/null || \
+    fail "ai-agent-switch agent-hub init did not return the expected dry-run JSON"
 }
 
 write_default_state() {
@@ -81,12 +140,6 @@ write_default_state() {
 }
 EOF_JSON
   fi
-
-  if [[ ! -f "${OPENCLAW_STATE_DIR}/.env" ]]; then
-    cat >"${OPENCLAW_STATE_DIR}/.env" <<EOF_ENV
-OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
-EOF_ENV
-  fi
 }
 
 install_agent_start() {
@@ -105,6 +158,49 @@ export PATH="/usr/local/bin:${PATH}"
 mkdir -p "$OPENCLAW_STATE_DIR" "$OPENCLAW_WORKSPACE" "$OPENCLAW_PLUGIN_STAGE_DIR"
 
 if [[ "$#" -eq 0 ]]; then
+  : "${OPENCLAW_GATEWAY_TOKEN:?OPENCLAW_GATEWAY_TOKEN is required}"
+
+  if [[ ! -f "${OPENCLAW_STATE_DIR}/.env" ]]; then
+    umask 077
+    printf 'OPENCLAW_GATEWAY_TOKEN=%s\n' "$OPENCLAW_GATEWAY_TOKEN" >"${OPENCLAW_STATE_DIR}/.env"
+  fi
+
+  if [[ ! -f "$OPENCLAW_CONFIG_PATH" ]]; then
+    cat >"$OPENCLAW_CONFIG_PATH" <<EOF_JSON
+{
+  "gateway": {
+    "mode": "local",
+    "bind": "lan",
+    "port": 18789,
+    "auth": {
+      "mode": "token"
+    }
+  },
+  "agents": {
+    "defaults": {
+      "workspace": "${OPENCLAW_WORKSPACE}",
+      "model": {
+        "primary": "openai/gpt-5.4"
+      }
+    }
+  },
+  "plugins": {
+    "entries": {
+      "acpx": {
+        "enabled": false
+      },
+      "bonjour": {
+        "enabled": false
+      },
+      "browser": {
+        "enabled": false
+      }
+    }
+  }
+}
+EOF_JSON
+  fi
+
   exec env \
     OPENCLAW_NO_RESPAWN=1 \
     OPENCLAW_SKIP_CHANNELS="${OPENCLAW_SKIP_CHANNELS:-1}" \
@@ -113,7 +209,7 @@ if [[ "$#" -eq 0 ]]; then
 fi
 
 case "$1" in
-  openclaw|node|npm|bash|sh)
+  openclaw|ai-agent-switch|node|npm|bash|sh)
     exec "$@"
     ;;
   *)
@@ -130,6 +226,7 @@ install_agent() {
   install_system_packages
   install_node
   install_openclaw_runtime
+  install_ai_agent_switch
   write_default_state
   install_agent_start
 

@@ -21,9 +21,11 @@ docker build -f agents/hermes-agent/Dockerfile -t agent-hub/hermes-agent:local .
 
 ```bash
 docker rm -f hermes-local 2>/dev/null || true
+export API_SERVER_KEY=sk-local-hermes
 docker run -d \
   --name hermes-local \
   -p 127.0.0.1:28642:8642 \
+  -e API_SERVER_KEY="$API_SERVER_KEY" \
   agent-hub/hermes-agent:local
 ```
 
@@ -38,7 +40,7 @@ docker run -d \
 ```bash
 curl -sv --max-time 5 \
   http://127.0.0.1:28642/v1/models \
-  -H 'Authorization: Bearer change-me-local-dev'
+  -H "Authorization: Bearer ${API_SERVER_KEY}"
 ```
 
 这个检查的重点不是模型调用成功，而是容器已经按固定 `start` 语义把 gateway 拉起来。

@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: cowagent
-          image: ghcr.io/gitlayzer/cowagent:dev-95e56bbc43d7
+          image: ghcr.io/nightwhite/cowagent:dev-9be0d3087285
           imagePullPolicy: IfNotPresent
           args: ["start"]
           workingDir: /workspace
@@ -68,6 +68,21 @@ spec:
           emptyDir: {}
         - name: cowagent-data
           emptyDir: {}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cowagent-secrets
+  labels:
+    app: cowagent
+    app.kubernetes.io/name: cowagent
+    app.kubernetes.io/component: agent
+type: Opaque
+stringData:
+  web-password: ""
+  open-ai-api-key: ""
+  open-ai-api-base: ""
+  deepseek-api-key: ""
 ---
 apiVersion: v1
 kind: Service

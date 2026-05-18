@@ -9,6 +9,10 @@ ARG HTTPS_PROXY
 ARG ALL_PROXY
 ARG no_proxy
 ARG NO_PROXY
+ARG AI_AGENT_SWITCH_VERSION
+ARG AI_AGENT_SWITCH_METADATA
+ARG AI_AGENT_SWITCH_SOURCE_URL
+ARG AI_AGENT_SWITCH_SOURCE_REF
 
 ENV AGENT_NAME=hermes-agent \
     AGENT_HOME=/opt/agent \
@@ -27,7 +31,10 @@ ENV AGENT_NAME=hermes-agent \
 LABEL org.opencontainers.image.title="Hermes Agent" \
       org.opencontainers.image.description="Hermes adapter for Agent Hub" \
       org.opencontainers.image.source="agents/hermes-agent" \
-      org.opencontainers.image.version="main-59b56d44"
+      org.opencontainers.image.version="main-59b56d44" \
+      org.sealos.agent.version="main-59b56d44" \
+      org.sealos.ai-agent-switch.version="${AI_AGENT_SWITCH_VERSION}" \
+      org.sealos.ai-agent-switch.metadata="${AI_AGENT_SWITCH_METADATA}"
 
 COPY agents/hermes-agent/build.env /tmp/build.env
 COPY agents/hermes-agent/install.sh /tmp/install.sh
@@ -35,6 +42,9 @@ RUN chmod +x /tmp/install.sh \
     && set -a \
     && . /tmp/build.env \
     && set +a \
+    && export AI_AGENT_SWITCH_VERSION="${AI_AGENT_SWITCH_VERSION}" \
+    && export AI_AGENT_SWITCH_SOURCE_URL="${AI_AGENT_SWITCH_SOURCE_URL}" \
+    && export AI_AGENT_SWITCH_SOURCE_REF="${AI_AGENT_SWITCH_SOURCE_REF}" \
     && /tmp/install.sh install \
     && rm -f /tmp/build.env /tmp/install.sh
 
@@ -49,6 +59,6 @@ WORKDIR ${AGENT_WORKSPACE}
 VOLUME ["/workspace", "/home/agent/.hermes"]
 EXPOSE 8642
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD curl -fsS -H "Authorization: Bearer ${API_SERVER_KEY:-change-me-local-dev}" "http://127.0.0.1:${API_SERVER_PORT:-8642}/v1/models" >/dev/null || exit 1
+  CMD test -n "$API_SERVER_KEY" && curl -fsS -H "Authorization: Bearer ${API_SERVER_KEY}" "http://127.0.0.1:${API_SERVER_PORT:-8642}/v1/models" >/dev/null || exit 1
 ENTRYPOINT ["/init", "/opt/agent/entrypoint.sh"]
 CMD ["start"]

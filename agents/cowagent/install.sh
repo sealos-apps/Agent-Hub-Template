@@ -11,6 +11,10 @@ COWAGENT_INSTALL_OPTIONAL="${COWAGENT_INSTALL_OPTIONAL:-true}"
 COWAGENT_INSTALL_AGENTMESH="${COWAGENT_INSTALL_AGENTMESH:-true}"
 COWAGENT_INSTALL_BROWSER="${COWAGENT_INSTALL_BROWSER:-false}"
 COWAGENT_USE_CN_MIRROR="${COWAGENT_USE_CN_MIRROR:-false}"
+NODE_MAJOR="${NODE_MAJOR:-22}"
+AI_AGENT_SWITCH_VERSION="${AI_AGENT_SWITCH_VERSION:-}"
+AI_AGENT_SWITCH_SOURCE_URL="${AI_AGENT_SWITCH_SOURCE_URL:-}"
+AI_AGENT_SWITCH_SOURCE_REF="${AI_AGENT_SWITCH_SOURCE_REF:-}"
 
 log() {
   printf '[%s] [INFO] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"
@@ -37,12 +41,80 @@ install_system_packages() {
     espeak \
     ffmpeg \
     git \
+    gnupg \
     libavcodec-extra \
     python3 \
     python3-pip \
     python3-venv \
     ripgrep
   rm -rf /var/lib/apt/lists/*
+}
+
+install_node() {
+  if command -v npm >/dev/null 2>&1; then
+    return
+  fi
+
+  curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | bash -
+  apt-get install -y --no-install-recommends nodejs
+  npm --version >/dev/null 2>&1 || fail "npm was not installed successfully"
+}
+
+install_ai_agent_switch() {
+  [[ -n "$AI_AGENT_SWITCH_VERSION" ]] || fail "AI_AGENT_SWITCH_VERSION is required"
+  install_node
+  if [[ -n "$AI_AGENT_SWITCH_SOURCE_URL" ]]; then
+    install_ai_agent_switch_from_source
+  else
+    npm install -g "ai-agent-switch@${AI_AGENT_SWITCH_VERSION}"
+  fi
+  verify_ai_agent_switch_agent_hub
+}
+
+install_ai_agent_switch_from_source() {
+  local src_dir
+  local package_dir
+  local target
+  target="linux-$(uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/')"
+  src_dir="$(mktemp -d)"
+  git init "$src_dir"
+  (
+    cd "$src_dir"
+    git remote add origin "$AI_AGENT_SWITCH_SOURCE_URL"
+    git fetch --depth 1 origin "${AI_AGENT_SWITCH_SOURCE_REF:-HEAD}"
+    git checkout --detach FETCH_HEAD
+    npm install -g bun
+    bun install --frozen-lockfile
+    bun run npm:build-package -- --platform "$target" --out-dir dist/npm-packages --version "$AI_AGENT_SWITCH_VERSION"
+  )
+  package_dir="$src_dir/dist/npm-packages/ai-agent-switch-$target"
+  [[ -x "$package_dir/ai-agent-switch" ]] || fail "ai-agent-switch source binary was not built"
+  install -m 0755 "$package_dir/ai-agent-switch" /usr/local/bin/ai-agent-switch
+  rm -rf "$src_dir"
+}
+
+verify_ai_agent_switch_agent_hub() {
+  local verify_home
+  local output
+  verify_home="$(mktemp -d)"
+  output="$(
+    HOME="$verify_home" ai-agent-switch agent-hub init \
+      --client cowagent \
+      --provider-id verify-aiproxy \
+      --provider-name Verify \
+      --model-type openai-chat-compatible \
+      --base-url http://127.0.0.1:1/v1 \
+      --api-key-env OPEN_AI_API_KEY \
+      --model verify-model \
+      --available-model verify-model \
+      --json
+  )" || {
+    rm -rf "$verify_home"
+    fail "ai-agent-switch agent-hub init verification failed"
+  }
+  rm -rf "$verify_home"
+  printf '%s' "$output" | grep -F '"requiresConfirmation": true' >/dev/null || \
+    fail "ai-agent-switch agent-hub init did not return the expected dry-run JSON"
 }
 
 configure_python_mirror() {
@@ -60,18 +132,18 @@ install_cowagent_runtime() {
   mkdir -p /opt/cowagent "$COWAGENT_HOME" "${AGENT_HOME}/bin"
 
   python3 -m venv "$COWAGENT_VENV"
-  "$COWAGENT_VENV/bin/python" -m pip install --upgrade pip setuptools wheel
-  "$COWAGENT_VENV/bin/pip" install -r "${COWAGENT_SRC}/requirements.txt"
+  "$COWAGENT_VENV/bin/python" -m pip install --no-cache-dir --upgrade pip setuptools wheel
+  "$COWAGENT_VENV/bin/pip" install --no-cache-dir -r "${COWAGENT_SRC}/requirements.txt"
 
   if [[ "$COWAGENT_INSTALL_OPTIONAL" == "true" ]]; then
-    "$COWAGENT_VENV/bin/pip" install -r "${COWAGENT_SRC}/requirements-optional.txt"
+    "$COWAGENT_VENV/bin/pip" install --no-cache-dir -r "${COWAGENT_SRC}/requirements-optional.txt"
   fi
 
   if [[ "$COWAGENT_INSTALL_AGENTMESH" == "true" ]]; then
-    "$COWAGENT_VENV/bin/pip" install "agentmesh-sdk>=0.1.3"
+    "$COWAGENT_VENV/bin/pip" install --no-cache-dir "agentmesh-sdk>=0.1.3"
   fi
 
-  "$COWAGENT_VENV/bin/pip" install -e "$COWAGENT_SRC"
+  "$COWAGENT_VENV/bin/pip" install --no-cache-dir -e "$COWAGENT_SRC"
 
   if [[ "$COWAGENT_INSTALL_BROWSER" == "true" ]]; then
     PLAYWRIGHT_BROWSERS_PATH=/opt/cowagent/ms-playwright "$COWAGENT_VENV/bin/cow" install-browser
@@ -154,7 +226,7 @@ case "$1" in
   --*)
     exec python app.py "$@"
     ;;
-  cow|python|python3|bash|sh)
+  cow|ai-agent-switch|node|npm|python|python3|bash|sh)
     exec "$@"
     ;;
   *)
@@ -170,6 +242,7 @@ install_agent() {
   prepare_install_env
   install_system_packages
   configure_python_mirror
+  install_ai_agent_switch
   checkout_cowagent_source
   install_cowagent_runtime
   write_default_config

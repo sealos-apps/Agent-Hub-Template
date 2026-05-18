@@ -5,9 +5,9 @@
 当前实现遵守第一阶段标准：
 
 - 固定入口：`entrypoint.sh start`
-- 固定配置入口：`config.sh`
-- 前端 manifest：`/opt/agent/config.json`
-- `config.sh` stdout 固定返回 JSON envelope
+- 镜像内置 `ai-agent-switch`
+- Agent Hub 通过 `ai-agent-switch agent-hub init` 写入模型配置
+- 当前模型通过 `ai-agent-switch client show openclaw --json` 读取
 - 不把 `onboard --install-daemon` 当成容器标准启动方式
 - 容器里的标准长驻进程固定为 `openclaw gateway run`
 - 配置直接落到 OpenClaw 原生 `~/.openclaw/openclaw.json` 与 `~/.openclaw/.env`
@@ -23,14 +23,22 @@
 ### 默认启动
 
 ```bash
-docker run --rm -p 127.0.0.1:28789:18789 agent-hub/openclaw:dev
+docker run --rm \
+  -p 127.0.0.1:28789:18789 \
+  -e OPENCLAW_GATEWAY_TOKEN=sk-local-openclaw \
+  agent-hub/openclaw:dev
 ```
 
 等价于：
 
 ```bash
-docker run --rm -p 127.0.0.1:28789:18789 agent-hub/openclaw:dev start
+docker run --rm \
+  -p 127.0.0.1:28789:18789 \
+  -e OPENCLAW_GATEWAY_TOKEN=sk-local-openclaw \
+  agent-hub/openclaw:dev start
 ```
+
+默认启动必须通过运行时环境变量或 Kubernetes Secret 提供 `OPENCLAW_GATEWAY_TOKEN`。
 
 镜像内部固定执行：
 
@@ -50,72 +58,53 @@ docker run --rm -it agent-hub/openclaw:dev shell
 docker run --rm agent-hub/openclaw:dev run --help
 ```
 
-## 配置方式
+## 模型配置方式
 
-OpenClaw 这一层直接使用原生配置：
+OpenClaw 这一层不再维护仓库私有配置脚本，模型初始化和切换统一交给 `ai-agent-switch`，最终仍然写入 OpenClaw 原生配置：
 
 - `~/.openclaw/openclaw.json`
 - `~/.openclaw/.env`
 - `/opt/openclaw/plugin-runtime-deps` for OpenClaw bundled plugin runtime deps
-- `openclaw config set/get/unset`
-- Gateway RPC `config.get` + `config.patch` when a gateway is already running
 
-### 设置主模型
+### 初始化或切换模型
 
 ```bash
-docker run --rm agent-hub/openclaw:dev config model set-main ccswitch gpt-5.4-mini
+docker run --rm \
+  -e CCSWITCH_API_KEY=sk-local-test \
+  agent-hub/openclaw:dev \
+  ai-agent-switch agent-hub init \
+    --client openclaw \
+    --provider-id ccswitch \
+    --provider-name CCSwitch \
+    --model-type openai-chat-compatible \
+    --base-url http://host.docker.internal:15721/v1 \
+    --api-key-env CCSWITCH_API_KEY \
+    --model gpt-5.4-mini \
+    --available-model gpt-5.4-mini \
+    -y \
+    --json
 ```
 
 上面的命令会写入：
 
 ```text
 agents.defaults.model.primary = "ccswitch/gpt-5.4-mini"
+models.providers.ccswitch.api = "openai-completions"
 ```
 
-### 设置 Provider endpoint 覆盖
+密钥通过环境变量引用，不写入明文 token。
+
+### 查看当前模型
 
 ```bash
-docker run --rm agent-hub/openclaw:dev config provider set ccswitch http://host.docker.internal:15721/v1 openai-completions
+docker run --rm agent-hub/openclaw:dev ai-agent-switch client show openclaw --json
 ```
 
-### 设置 Provider API Key
+### Agent Hub 初始化命令自检
 
 ```bash
-docker run --rm agent-hub/openclaw:dev config provider set-api-key ccswitch sk-xxx
+docker run --rm agent-hub/openclaw:dev ai-agent-switch agent-hub init --help
 ```
-
-如果 gateway 已经在运行，这个动作会通过 OpenClaw 原生 Gateway RPC `config.patch` 写入 `models.providers.<id>.apiKey`，等待 gateway 重新 ready 后才返回 `applied=true`。stdout 只返回是否已配置和掩码，不返回密钥明文。
-
-### 设置 Gateway 本地模式
-
-```bash
-docker run --rm agent-hub/openclaw:dev config gateway set-local lan 18789
-```
-
-### 设置 Gateway token
-
-```bash
-docker run --rm agent-hub/openclaw:dev config gateway set-token change-me-local-dev
-```
-
-### 设置凭据或其他环境变量
-
-```bash
-docker run --rm agent-hub/openclaw:dev config env set OPENAI_API_KEY sk-xxx
-docker run --rm agent-hub/openclaw:dev config env set OPENCLAW_GATEWAY_TOKEN change-me-local-dev
-```
-
-### 查看当前配置
-
-```bash
-docker run --rm agent-hub/openclaw:dev config model get-main
-docker run --rm agent-hub/openclaw:dev config provider get ccswitch
-docker run --rm agent-hub/openclaw:dev config provider get-api-key ccswitch
-docker run --rm agent-hub/openclaw:dev config gateway get-local
-docker run --rm agent-hub/openclaw:dev config env list
-```
-
-所有配置命令的 stdout 都是统一 JSON。读取 token 或 `.env` 时只返回是否已配置和掩码，不返回密钥明文。
 
 ## 本地持久化测试
 
@@ -126,14 +115,27 @@ docker run -d \
   --name openclaw-local \
   -p 127.0.0.1:28789:18789 \
   -v "$PWD/.tmp/openclaw-home:/home/agent/.openclaw" \
-  agent-hub/openclaw:dev
+  -e OPENCLAW_GATEWAY_TOKEN=sk-local-openclaw \
+  -e CCSWITCH_API_KEY=sk-local-test \
+  agent-hub/openclaw:dev \
+  bash -lc '
+    ai-agent-switch agent-hub init \
+      --client openclaw \
+      --provider-id ccswitch \
+      --provider-name CCSwitch \
+      --model-type openai-chat-compatible \
+      --base-url http://host.docker.internal:15721/v1 \
+      --api-key-env CCSWITCH_API_KEY \
+      --model gpt-5.4-mini \
+      --available-model gpt-5.4-mini \
+      -y \
+      --json
+    exec /opt/agent/bin/start
+  '
 
-docker exec openclaw-local /opt/agent/config.sh gateway get-local
-docker exec openclaw-local /opt/agent/config.sh provider set ccswitch http://host.docker.internal:15721/v1 openai-completions
-docker exec openclaw-local /opt/agent/config.sh model set-main ccswitch gpt-5.4-mini
-docker exec openclaw-local /opt/agent/config.sh provider set-api-key ccswitch sk-local-test
+docker exec --user agent -e HOME=/home/agent openclaw-local ai-agent-switch client show openclaw --json
 ```
 
-容器默认把 `gateway.bind` 固定为 `lan`，这样 `docker run -p ...` 后宿主机可以直接访问 published port。运行中的 gateway 使用 upstream 原生 `config.patch` 触发配置写入与运行态刷新。这里额外设置 `OPENCLAW_NO_RESPAWN=1`，避免 `docker run` 场景下需要 full-process restart 的配置变更直接让容器退出；默认设置 `OPENCLAW_SKIP_CHANNELS=1`，沿用 upstream dev/live-test 入口，避免容器网络里启动 Telegram 等频道 sidecar；默认设置 `OPENCLAW_DISABLE_BONJOUR=1`，沿用 upstream Docker 建议，避免 Docker bridge 网络里的 mDNS 探测导致 gateway 不稳定。
+容器默认把 `gateway.bind` 固定为 `lan`，这样 `docker run -p ...` 后宿主机可以直接访问 published port。这里额外设置 `OPENCLAW_NO_RESPAWN=1`，避免 `docker run` 场景下需要 full-process restart 的配置变更直接让容器退出；默认设置 `OPENCLAW_SKIP_CHANNELS=1`，沿用 upstream dev/live-test 入口，避免容器网络里启动 Telegram 等频道 sidecar；默认设置 `OPENCLAW_DISABLE_BONJOUR=1`，沿用 upstream Docker 建议，避免 Docker bridge 网络里的 mDNS 探测导致 gateway 不稳定。
 
 默认原生配置会禁用 `acpx`、`bonjour`、`browser` 这几个 bundled sidecar 插件。第一阶段 Devbox adapter 只验收 gateway、模型 provider、配置热更新和 inference 链路；不默认打开 OpenClaw 桌面/频道发现能力，避免本地 Docker 与 Devbox 容器网络里出现非核心 sidecar 阻塞或重启。

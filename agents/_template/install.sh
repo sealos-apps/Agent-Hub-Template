@@ -33,7 +33,7 @@ set -euo pipefail
 cat >&2 <<'MSG'
 change-me agent scaffold is not implemented yet.
 
-Replace agents/change-me/install.sh with the real upstream install flow,
+Replace agents/<agent>/install.sh with the real upstream install flow,
 then make sure it writes the real startup command to /opt/agent/bin/start.
 Runtime configuration should come from environment variables, mounted files,
 or Kubernetes Secret/ConfigMap references.

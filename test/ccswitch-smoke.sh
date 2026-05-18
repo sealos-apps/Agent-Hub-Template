@@ -14,11 +14,28 @@ CCSWITCH_CONTAINER_BASE_URL="${CCSWITCH_CONTAINER_BASE_URL:-http://host.docker.i
 CCSWITCH_API_KEY="${CCSWITCH_API_KEY:-sk-local-smoke}"
 CCSWITCH_MODEL="${CCSWITCH_MODEL:-gpt-5.4-mini}"
 OPENCLAW_INFER_TIMEOUT_SECONDS="${OPENCLAW_INFER_TIMEOUT_SECONDS:-240}"
+HERMES_API_SERVER_KEY="${HERMES_API_SERVER_KEY:-hermes-ccswitch-smoke-token}"
+OPENCLAW_GATEWAY_TOKEN="${OPENCLAW_GATEWAY_TOKEN:-openclaw-ccswitch-smoke-token}"
 
 fail() {
   printf '[ERROR] %s\n' "$*" >&2
   exit 1
 }
+
+resolve_ai_agent_switch_version() {
+  if [[ -n "${AI_AGENT_SWITCH_VERSION:-}" ]]; then
+    printf '%s' "$AI_AGENT_SWITCH_VERSION"
+    return
+  fi
+
+  command -v npm >/dev/null 2>&1 || \
+    fail "AI_AGENT_SWITCH_VERSION is required when npm is not available"
+
+  npm view ai-agent-switch version || \
+    fail "failed to resolve AI_AGENT_SWITCH_VERSION from npm"
+}
+
+AI_AGENT_SWITCH_VERSION="$(resolve_ai_agent_switch_version)"
 
 rewrite_proxy_for_docker() {
   local value="${1:-}"
@@ -42,36 +59,6 @@ append_no_proxy_host() {
       printf '%s,%s' "$value" "host.docker.internal"
       ;;
   esac
-}
-
-assert_success_json() {
-  local output="$1"
-  printf '%s' "$output" | python3 -c 'import json, sys
-payload = json.load(sys.stdin)
-assert payload.get("ok") is True, payload
-assert payload.get("applied") is True, payload
-assert "data" in payload, payload
-'
-}
-
-assert_runtime_config_applied() {
-  local output="$1"
-  printf '%s' "$output" | python3 -c 'import json, sys
-payload = json.load(sys.stdin)
-runtime_apply = payload.get("data", {}).get("runtimeApply", {})
-assert runtime_apply.get("applied") is True, payload
-assert runtime_apply.get("skipped") is False, payload
-'
-}
-
-assert_runtime_apply_applied() {
-  local output="$1"
-  printf '%s' "$output" | python3 -c 'import json, sys
-payload = json.load(sys.stdin)
-runtime_apply = payload.get("data", {}).get("runtimeApply", {})
-assert runtime_apply.get("applied") is True, payload
-assert runtime_apply.get("skipped") is False, payload
-'
 }
 
 assert_chat_completion_text() {
@@ -123,20 +110,11 @@ print(f"openclaw_gateway=ok model={model} text={text[:120]}")
 PY
 }
 
-run_config_json() {
-  local container="$1"
-  shift
-  local output
-  output="$(docker exec "$container" /opt/agent/config.sh "$@")"
-  assert_success_json "$output"
-  printf '%s' "$output"
-}
-
 wait_for_hermes() {
   local ready=0
   for _ in $(seq 1 45); do
     if curl --noproxy '*' -fsS --max-time 2 "http://127.0.0.1:${HERMES_HOST_PORT}/v1/models" \
-      -H 'Authorization: Bearer change-me-local-dev' >/dev/null 2>&1; then
+      -H "Authorization: Bearer ${HERMES_API_SERVER_KEY}" >/dev/null 2>&1; then
       ready=1
       break
     fi
@@ -196,6 +174,31 @@ if completed.returncode != 0:
 PY
 }
 
+verify_ai_agent_switch_image() {
+  local image="$1"
+  local client="$2"
+  local output
+  output="$(
+    docker run --rm --platform "$DOCKER_PLATFORM" -e "VERIFY_CLIENT=${client}" "$image" bash -lc '
+      set -euo pipefail
+      verify_home="$(mktemp -d)"
+      trap "rm -rf \"$verify_home\"" EXIT
+      HOME="$verify_home" ai-agent-switch agent-hub init \
+        --client "$VERIFY_CLIENT" \
+        --provider-id verify-aiproxy \
+        --provider-name Verify \
+        --model-type openai-chat-compatible \
+        --base-url http://127.0.0.1:1/v1 \
+        --api-key-env AIPROXY_API_KEY \
+        --model verify-model \
+        --available-model verify-model \
+        --json
+    '
+  )"
+  printf '%s' "$output" | grep -F '"requiresConfirmation": true' >/dev/null
+  docker image inspect "$image" --format '{{ index .Config.Labels "org.sealos.ai-agent-switch.version" }}' | grep -Fx "$AI_AGENT_SWITCH_VERSION" >/dev/null
+}
+
 docker_proxy_args=()
 for key in http_proxy https_proxy all_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY no_proxy NO_PROXY; do
   if [[ -n "${!key:-}" ]]; then
@@ -228,10 +231,11 @@ cleanup() {
 trap cleanup EXIT
 
 if [[ "$BUILD_IMAGES" == "1" ]]; then
-  printf '==> building Hermes and OpenClaw images (%s)\n' "$DOCKER_PLATFORM"
+  printf '==> building Hermes and OpenClaw images (%s, ai-agent-switch %s)\n' "$DOCKER_PLATFORM" "$AI_AGENT_SWITCH_VERSION"
   docker build \
     --platform "$DOCKER_PLATFORM" \
     --add-host host.docker.internal:host-gateway \
+    --build-arg "AI_AGENT_SWITCH_VERSION=${AI_AGENT_SWITCH_VERSION}" \
     "${docker_proxy_args[@]+"${docker_proxy_args[@]}"}" \
     -f agents/hermes-agent/Dockerfile \
     -t "$HERMES_IMAGE" \
@@ -239,11 +243,15 @@ if [[ "$BUILD_IMAGES" == "1" ]]; then
   docker build \
     --platform "$DOCKER_PLATFORM" \
     --add-host host.docker.internal:host-gateway \
+    --build-arg "AI_AGENT_SWITCH_VERSION=${AI_AGENT_SWITCH_VERSION}" \
     "${docker_proxy_args[@]+"${docker_proxy_args[@]}"}" \
     -f agents/openclaw/Dockerfile \
     -t "$OPENCLAW_IMAGE" \
     .
 fi
+
+verify_ai_agent_switch_image "$HERMES_IMAGE" hermes
+verify_ai_agent_switch_image "$OPENCLAW_IMAGE" openclaw
 
 printf '==> checking direct ccswitch chat completion\n'
 direct_output="$(mktemp)"
@@ -261,17 +269,34 @@ docker run -d \
   --add-host host.docker.internal:host-gateway \
   --name "$HERMES_CONTAINER" \
   -p "127.0.0.1:${HERMES_HOST_PORT}:8642" \
+  -e "CCSWITCH_API_KEY=${CCSWITCH_API_KEY}" \
+  -e "CCSWITCH_CONTAINER_BASE_URL=${CCSWITCH_CONTAINER_BASE_URL}" \
+  -e "CCSWITCH_MODEL=${CCSWITCH_MODEL}" \
+  -e "API_SERVER_KEY=${HERMES_API_SERVER_KEY}" \
   "${docker_proxy_env[@]+"${docker_proxy_env[@]}"}" \
-  "$HERMES_IMAGE" >/dev/null
+  "$HERMES_IMAGE" \
+  bash -lc '
+    set -euo pipefail
+    ai-agent-switch agent-hub init \
+      --client hermes \
+      --provider-id ccswitch \
+      --provider-name CCSwitch \
+      --model-type openai-chat-compatible \
+      --base-url "$CCSWITCH_CONTAINER_BASE_URL" \
+      --api-key-env CCSWITCH_API_KEY \
+      --model "$CCSWITCH_MODEL" \
+      --available-model "$CCSWITCH_MODEL" \
+      -y \
+      --json
+    exec /opt/agent/bin/start
+  ' >/dev/null
 wait_for_hermes
 
-run_config_json "$HERMES_CONTAINER" provider set-main ccswitch "$CCSWITCH_CONTAINER_BASE_URL" chat_completions CCSWITCH_API_KEY >/dev/null
-run_config_json "$HERMES_CONTAINER" model set-main "$CCSWITCH_MODEL" >/dev/null
-run_config_json "$HERMES_CONTAINER" env set CCSWITCH_API_KEY "$CCSWITCH_API_KEY" >/dev/null
+docker exec --user agent -e HOME=/home/agent "$HERMES_CONTAINER" ai-agent-switch client show hermes --json | python3 -c 'import json, sys; expected=sys.argv[1]; payload=json.load(sys.stdin); assert payload["providerId"] == "ccswitch", payload; assert payload["modelId"] == expected, payload' "$CCSWITCH_MODEL"
 hermes_output="$(mktemp)"
 curl --noproxy '*' -fsS --max-time 90 "http://127.0.0.1:${HERMES_HOST_PORT}/v1/chat/completions" \
   -H 'Content-Type: application/json' \
-  -H 'Authorization: Bearer change-me-local-dev' \
+  -H "Authorization: Bearer ${HERMES_API_SERVER_KEY}" \
   -d '{"model":"'"${CCSWITCH_MODEL}"'","messages":[{"role":"user","content":"Reply with exactly: pong"}],"max_tokens":16}' \
   >"$hermes_output"
 assert_chat_completion_text "$hermes_output" "hermes_gateway"
@@ -283,18 +308,30 @@ docker run -d \
   --add-host host.docker.internal:host-gateway \
   --name "$OPENCLAW_CONTAINER" \
   -p "127.0.0.1:${OPENCLAW_HOST_PORT}:18789" \
+  -e "CCSWITCH_API_KEY=${CCSWITCH_API_KEY}" \
+  -e "CCSWITCH_CONTAINER_BASE_URL=${CCSWITCH_CONTAINER_BASE_URL}" \
+  -e "CCSWITCH_MODEL=${CCSWITCH_MODEL}" \
+  -e "OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}" \
   "${docker_proxy_env[@]+"${docker_proxy_env[@]}"}" \
-  "$OPENCLAW_IMAGE" >/dev/null
+  "$OPENCLAW_IMAGE" \
+  bash -lc '
+    set -euo pipefail
+    ai-agent-switch agent-hub init \
+      --client openclaw \
+      --provider-id ccswitch \
+      --provider-name CCSwitch \
+      --model-type openai-chat-compatible \
+      --base-url "$CCSWITCH_CONTAINER_BASE_URL" \
+      --api-key-env CCSWITCH_API_KEY \
+      --model "$CCSWITCH_MODEL" \
+      --available-model "$CCSWITCH_MODEL" \
+      -y \
+      --json
+    exec /opt/agent/bin/start
+  ' >/dev/null
 wait_for_openclaw
 
-runtime_output="$(run_config_json "$OPENCLAW_CONTAINER" gateway set-local lan 18789)"
-assert_runtime_apply_applied "$runtime_output"
-runtime_output="$(run_config_json "$OPENCLAW_CONTAINER" provider set ccswitch "$CCSWITCH_CONTAINER_BASE_URL" openai-completions)"
-assert_runtime_apply_applied "$runtime_output"
-runtime_output="$(run_config_json "$OPENCLAW_CONTAINER" model set-main ccswitch "$CCSWITCH_MODEL")"
-assert_runtime_apply_applied "$runtime_output"
-secret_output="$(run_config_json "$OPENCLAW_CONTAINER" provider set-api-key ccswitch "$CCSWITCH_API_KEY")"
-assert_runtime_config_applied "$secret_output"
+docker exec --user agent -e HOME=/home/agent "$OPENCLAW_CONTAINER" ai-agent-switch client show openclaw --json | python3 -c 'import json, sys; expected=sys.argv[1]; payload=json.load(sys.stdin); assert payload["providerId"] == "ccswitch", payload; assert payload["modelId"] == expected, payload' "$CCSWITCH_MODEL"
 openclaw_output="$(mktemp)"
 run_openclaw_gateway_infer "$openclaw_output"
 assert_openclaw_gateway_text "$openclaw_output"

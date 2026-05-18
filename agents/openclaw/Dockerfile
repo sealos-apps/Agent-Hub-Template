@@ -9,6 +9,10 @@ ARG HTTPS_PROXY
 ARG ALL_PROXY
 ARG no_proxy
 ARG NO_PROXY
+ARG AI_AGENT_SWITCH_VERSION
+ARG AI_AGENT_SWITCH_METADATA
+ARG AI_AGENT_SWITCH_SOURCE_URL
+ARG AI_AGENT_SWITCH_SOURCE_REF
 
 ENV AGENT_NAME=openclaw \
     AGENT_HOME=/opt/agent \
@@ -22,12 +26,23 @@ ENV AGENT_NAME=openclaw \
     OPENCLAW_PLUGIN_STAGE_DIR=/opt/openclaw/plugin-runtime-deps \
     PATH=/opt/agent/bin:/usr/local/bin:$PATH
 
+LABEL org.opencontainers.image.title="OpenClaw" \
+      org.opencontainers.image.description="OpenClaw gateway adapter for Agent Hub" \
+      org.opencontainers.image.source="agents/openclaw" \
+      org.opencontainers.image.version="2026.4.24" \
+      org.sealos.agent.version="2026.4.24" \
+      org.sealos.ai-agent-switch.version="${AI_AGENT_SWITCH_VERSION}" \
+      org.sealos.ai-agent-switch.metadata="${AI_AGENT_SWITCH_METADATA}"
+
 COPY agents/openclaw/build.env /tmp/build.env
 COPY agents/openclaw/install.sh /tmp/install.sh
 RUN chmod +x /tmp/install.sh \
     && set -a \
     && . /tmp/build.env \
     && set +a \
+    && export AI_AGENT_SWITCH_VERSION="${AI_AGENT_SWITCH_VERSION}" \
+    && export AI_AGENT_SWITCH_SOURCE_URL="${AI_AGENT_SWITCH_SOURCE_URL}" \
+    && export AI_AGENT_SWITCH_SOURCE_REF="${AI_AGENT_SWITCH_SOURCE_REF}" \
     && /tmp/install.sh install \
     && rm -f /tmp/build.env /tmp/install.sh
 

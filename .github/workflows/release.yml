@@ -2,6 +2,15 @@ name: release-enabled-agents
 
 on:
   workflow_dispatch:
+    inputs:
+      ai_agent_switch_source_url:
+        description: Optional ai-agent-switch source repository URL.
+        required: false
+        default: ''
+      ai_agent_switch_source_ref:
+        description: Optional ai-agent-switch source ref. Required when source URL is set.
+        required: false
+        default: ''
   push:
     branches:
       - master
@@ -21,6 +30,10 @@ jobs:
       matrix: ${{ steps.matrix.outputs.matrix }}
       count: ${{ steps.matrix.outputs.count }}
       owner: ${{ steps.owner.outputs.owner }}
+      ai-agent-switch-version: ${{ steps.ai-agent-switch.outputs.version }}
+      ai-agent-switch-metadata: ${{ steps.ai-agent-switch.outputs.metadata }}
+      ai-agent-switch-source-url: ${{ steps.ai-agent-switch.outputs.source-url }}
+      ai-agent-switch-source-ref: ${{ steps.ai-agent-switch.outputs.source-ref }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,6 +44,44 @@ jobs:
       - name: Resolve owner
         id: owner
         run: echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve ai-agent-switch version
+        id: ai-agent-switch
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          SOURCE_URL_INPUT: ${{ github.event.inputs.ai_agent_switch_source_url || '' }}
+          SOURCE_REF_INPUT: ${{ github.event.inputs.ai_agent_switch_source_ref || '' }}
+        run: |
+          version="$(npm view ai-agent-switch version)"
+          if [ -z "$version" ]; then
+            echo "failed to resolve ai-agent-switch version" >&2
+            exit 1
+          fi
+          source_url="$SOURCE_URL_INPUT"
+          source_ref="$SOURCE_REF_INPUT"
+          if [ -z "$source_url" ] && [ -n "$source_ref" ]; then
+            source_url="https://github.com/sealos-apps/ai-agent-switch.git"
+          fi
+          if [ -z "$source_url" ] && [ -z "$source_ref" ] && { [ "$EVENT_NAME" = "push" ] || [ "$EVENT_NAME" = "workflow_dispatch" ]; }; then
+            source_url="https://github.com/sealos-apps/ai-agent-switch.git"
+            source_ref="9d78561ecbd35ce775f7acfe70e3bdb6617b9b51"
+          fi
+          if [ -n "$source_url" ] && [ -z "$source_ref" ]; then
+            echo "ai-agent-switch source ref is required when source url is set" >&2
+            exit 1
+          fi
+          if [ -z "$source_url" ] && [ -n "$source_ref" ]; then
+            echo "ai-agent-switch source url is required when source ref is set" >&2
+            exit 1
+          fi
+          metadata="$version"
+          if [ -n "$source_ref" ]; then
+            metadata="${version}+source.${source_ref}"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "metadata=$metadata" >> "$GITHUB_OUTPUT"
+          echo "source-url=$source_url" >> "$GITHUB_OUTPUT"
+          echo "source-ref=$source_ref" >> "$GITHUB_OUTPUT"
 
       - name: Generate agent matrix from registry
         id: matrix
@@ -141,6 +192,10 @@ jobs:
           done <<< "$IMAGE_TAGS"
 
           docker build \
+            --build-arg "AI_AGENT_SWITCH_VERSION=${{ needs.prepare.outputs['ai-agent-switch-version'] }}" \
+            --build-arg "AI_AGENT_SWITCH_METADATA=${{ needs.prepare.outputs['ai-agent-switch-metadata'] }}" \
+            --build-arg "AI_AGENT_SWITCH_SOURCE_URL=${{ needs.prepare.outputs['ai-agent-switch-source-url'] }}" \
+            --build-arg "AI_AGENT_SWITCH_SOURCE_REF=${{ needs.prepare.outputs['ai-agent-switch-source-ref'] }}" \
             --file "${{ matrix.path }}/Dockerfile" \
             "${tag_args[@]}" \
             .
@@ -171,6 +226,7 @@ jobs:
         env:
           OWNER: ${{ needs.prepare.outputs.owner }}
           MATRIX: ${{ needs.prepare.outputs.matrix }}
+          AI_AGENT_SWITCH_METADATA: ${{ needs.prepare.outputs.ai-agent-switch-metadata }}
         run: |
           python3 - <<'PY'
           import json
@@ -190,6 +246,7 @@ jobs:
               index_path = path / "index.json"
               index = json.loads(index_path.read_text())
               index["image"] = image
+              index["ai_agent_switch_version"] = os.environ["AI_AGENT_SWITCH_METADATA"]
               index_path.write_text(json.dumps(index, indent=2) + "\n")
 
               deploy_path = path / "deploy.yaml"
@@ -207,5 +264,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add agents/*/index.json agents/*/deploy.yaml
-          git commit -m "chore: sync dev agent image refs [skip ci]"
+          git commit -m "chore: sync dev agent image refs"
           git push origin "HEAD:${GITHUB_REF_NAME}"
