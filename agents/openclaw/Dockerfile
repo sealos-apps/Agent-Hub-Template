@@ -30,8 +30,8 @@ ENV AGENT_NAME=openclaw \
 LABEL org.opencontainers.image.title="OpenClaw" \
       org.opencontainers.image.description="OpenClaw gateway adapter for Agent Hub" \
       org.opencontainers.image.source="agents/openclaw" \
-      org.opencontainers.image.version="2026.5.18" \
-      org.sealos.agent.version="2026.5.18" \
+      org.opencontainers.image.version="2026.5.19" \
+      org.sealos.agent.version="2026.5.19" \
       org.sealos.ai-agent-switch.version="${AI_AGENT_SWITCH_VERSION}" \
       org.sealos.ai-agent-switch.metadata="${AI_AGENT_SWITCH_METADATA}"
 

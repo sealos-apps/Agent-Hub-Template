@@ -14,7 +14,7 @@
 
 ## Upstream Pin
 
-- npm package: `openclaw@2026.5.18`
+- npm package: `openclaw@2026.5.19`
 - reference repo head used for study: `131577a4dc6de8e368c4b21cf7d87a200f8ee88d`
 
 ## 运行方式
