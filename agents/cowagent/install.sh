@@ -7,6 +7,7 @@ COWAGENT_REF="${COWAGENT_REF:-2.0.8}"
 COWAGENT_SRC="${COWAGENT_SRC:-/opt/cowagent/src}"
 COWAGENT_VENV="${COWAGENT_VENV:-/opt/cowagent/venv}"
 COWAGENT_HOME="${COWAGENT_HOME:-/home/agent/.cowagent}"
+COWAGENT_DEFAULTS_DIR="${COWAGENT_DEFAULTS_DIR:-/opt/agent/defaults/cowagent}"
 COWAGENT_INSTALL_OPTIONAL="${COWAGENT_INSTALL_OPTIONAL:-true}"
 COWAGENT_INSTALL_AGENTMESH="${COWAGENT_INSTALL_AGENTMESH:-true}"
 COWAGENT_INSTALL_BROWSER="${COWAGENT_INSTALL_BROWSER:-false}"
@@ -158,6 +159,8 @@ install_cowagent_runtime() {
 }
 
 write_default_config() {
+  mkdir -p "$COWAGENT_DEFAULTS_DIR"
+
   "$COWAGENT_VENV/bin/python" - <<'PY'
 import json
 import os
@@ -166,6 +169,8 @@ from pathlib import Path
 src = Path(os.environ.get("COWAGENT_SRC", "/opt/cowagent/src"))
 template = src / "config-template.json"
 target = src / "config.json"
+defaults_dir = Path(os.environ.get("COWAGENT_DEFAULTS_DIR", "/opt/agent/defaults/cowagent"))
+defaults_target = defaults_dir / "config.json"
 
 config = json.loads(template.read_text(encoding="utf-8"))
 config.update(
@@ -179,7 +184,10 @@ config.update(
         "group_speech_recognition": False,
     }
 )
-target.write_text(json.dumps(config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+content = json.dumps(config, ensure_ascii=False, indent=2) + "\n"
+target.write_text(content, encoding="utf-8")
+defaults_dir.mkdir(parents=True, exist_ok=True)
+defaults_target.write_text(content, encoding="utf-8")
 PY
 }
 
@@ -193,16 +201,25 @@ set -euo pipefail
 export COWAGENT_SRC="${COWAGENT_SRC:-/opt/cowagent/src}"
 export COWAGENT_HOME="${COWAGENT_HOME:-${AGENT_DATA_DIR:-/home/agent/.cowagent}}"
 export COWAGENT_CONFIG_FILE="${COWAGENT_CONFIG_FILE:-${COWAGENT_HOME}/config.json}"
+export COWAGENT_DEFAULT_CONFIG_FILE="${COWAGENT_DEFAULT_CONFIG_FILE:-/opt/agent/defaults/cowagent/config.json}"
 export COWAGENT_VENV="${COWAGENT_VENV:-/opt/cowagent/venv}"
 export PATH="${COWAGENT_VENV}/bin:${PATH}"
 
 mkdir -p "$COWAGENT_HOME" "${AGENT_WORKSPACE:-/workspace}"
 
 if [[ ! -f "$COWAGENT_CONFIG_FILE" ]]; then
-  cp "${COWAGENT_SRC}/config.json" "$COWAGENT_CONFIG_FILE"
+  if [[ -f "$COWAGENT_DEFAULT_CONFIG_FILE" ]]; then
+    cp "$COWAGENT_DEFAULT_CONFIG_FILE" "$COWAGENT_CONFIG_FILE"
+  elif [[ -f "${COWAGENT_SRC}/config-template.json" ]]; then
+    cp "${COWAGENT_SRC}/config-template.json" "$COWAGENT_CONFIG_FILE"
+  else
+    printf '[ERROR] missing CowAgent default config: %s\n' "$COWAGENT_DEFAULT_CONFIG_FILE" >&2
+    exit 1
+  fi
 fi
 
-ln -sf "$COWAGENT_CONFIG_FILE" "${COWAGENT_SRC}/config.json"
+rm -f "${COWAGENT_SRC}/config.json"
+ln -s "$COWAGENT_CONFIG_FILE" "${COWAGENT_SRC}/config.json"
 
 if [[ -n "${OPENAI_API_KEY:-}" && -z "${OPEN_AI_API_KEY:-}" ]]; then
   export OPEN_AI_API_KEY="$OPENAI_API_KEY"

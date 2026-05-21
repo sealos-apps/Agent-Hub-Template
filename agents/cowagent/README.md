@@ -29,7 +29,7 @@ This agent follows the shared Agent Hub runtime contract:
 
 The pinned upstream source ref is `2.0.8`.
 
-Agent Hub test image: `ghcr.io/gitlayzer/cowagent:2.0.8-agenthub-test.1`.
+Agent Hub test image: `ghcr.io/gitlayzer/cowagent:2.0.8-agenthub-test.2`.
 
 ## Startup behavior
 
