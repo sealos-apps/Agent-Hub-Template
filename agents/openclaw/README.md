@@ -15,6 +15,7 @@
 ## Upstream Pin
 
 - npm package: `openclaw@2026.5.19`
+- Agent Hub test image: `ghcr.io/gitlayzer/openclaw:2026.5.19-agenthub-test.1`
 - reference repo head used for study: `131577a4dc6de8e368c4b21cf7d87a200f8ee88d`
 
 ## 运行方式

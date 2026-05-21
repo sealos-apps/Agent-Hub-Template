@@ -117,9 +117,12 @@ for key in ("id", "name", "version", "image", "repo_path", "readme"):
         raise SystemExit(f"{path}: missing required key {key}")
 if data.get("id") != "_template":
     version = str(data["version"])
+    image_tag = str(data.get("image_tag") or version)
     image = str(data["image"])
-    if not image.endswith(f":{version}"):
-        raise SystemExit(f"{path}: image tag must match version {version}")
+    if not image.endswith(f":{image_tag}"):
+        raise SystemExit(f"{path}: image tag must match image_tag {image_tag}")
+    if data.get("image_tag") is not None and not str(data["image_tag"]).startswith(f"{version}-"):
+        raise SystemExit(f"{path}: image_tag must be derived from version {version}")
     switch_version = data.get("ai_agent_switch_version")
     if not switch_version:
         raise SystemExit(f"{path}: missing required key ai_agent_switch_version")
@@ -462,6 +465,12 @@ validate_workflow_contracts() {
     fail ".github/workflows/build.yml must pass AI_AGENT_SWITCH_METADATA into docker build"
   grep -F 'AI_AGENT_SWITCH_METADATA=${{ needs.prepare.outputs' .github/workflows/release.yml >/dev/null || \
     fail ".github/workflows/release.yml must pass AI_AGENT_SWITCH_METADATA into docker build"
+  grep -F '"image_tag": index.get("image_tag")' .github/workflows/release.yml >/dev/null || \
+    fail ".github/workflows/release.yml must carry optional per-agent image_tag"
+  grep -F 'AGENT_IMAGE_TAG: ${{ matrix.image_tag' .github/workflows/release.yml >/dev/null || \
+    fail ".github/workflows/release.yml must prefer image_tag over version when tagging images"
+  grep -F 'tag = str(item.get("image_tag") or item["version"])' .github/workflows/release.yml >/dev/null || \
+    fail ".github/workflows/release.yml sync step must preserve image_tag in templates"
   if grep -R --line-number -i -E '\[(skip ci|ci skip|skip actions|actions skip)\]' .github/workflows >/dev/null; then
     fail "workflow-generated commits must not include skip-ci directives"
   fi

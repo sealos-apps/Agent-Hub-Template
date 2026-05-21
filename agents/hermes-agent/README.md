@@ -16,6 +16,7 @@
 - upstream tag: `v2026.5.16`
 - package version: `0.14.0`
 - pinned ref: `a91a57fa5a13d516c38b07a141a9ce8a3daabeb0`
+- Agent Hub test image: `ghcr.io/gitlayzer/hermes-agent:0.14.0-agenthub-test.1`
 
 ## 运行方式
 

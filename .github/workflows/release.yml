@@ -126,15 +126,19 @@ jobs:
               if not isinstance(item, dict):
                   raise SystemExit(f"{registry_path}: agents[{index}] must be a mapping")
 
-          enabled = [
-              {
-                  "name": item["name"],
-                  "path": item["path"],
-                  "version": json.loads(Path(item["path"], "index.json").read_text())["version"],
-              }
-              for item in items
-              if item.get("enabled") is True
-          ]
+          enabled = []
+          for item in items:
+              if item.get("enabled") is not True:
+                  continue
+              index = json.loads(Path(item["path"], "index.json").read_text())
+              enabled.append(
+                  {
+                      "name": item["name"],
+                      "path": item["path"],
+                      "version": index["version"],
+                      "image_tag": index.get("image_tag"),
+                  }
+              )
 
           print(f"matrix={json.dumps({'include': enabled}, separators=(',', ':'))}")
           print(f"count={len(enabled)}")
@@ -212,10 +216,12 @@ jobs:
         id: tags
         env:
           AGENT_VERSION: ${{ matrix.version }}
+          AGENT_IMAGE_TAG: ${{ matrix.image_tag || '' }}
         run: |
+          tag="${AGENT_IMAGE_TAG:-$AGENT_VERSION}"
           {
             echo "tags<<EOF"
-            echo "$AGENT_VERSION"
+            echo "$tag"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -279,7 +285,7 @@ jobs:
           for item in matrix["include"]:
               name = str(item["name"])
               path = Path(str(item["path"]))
-              tag = str(item["version"])
+              tag = str(item.get("image_tag") or item["version"])
               image = f"ghcr.io/{owner}/{name}:{tag}"
               base_image = f"ghcr.io/{owner}/agent-devbox-base:0.1.0"
 
