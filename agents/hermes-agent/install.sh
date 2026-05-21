@@ -7,6 +7,7 @@ HERMES_REF="${HERMES_REF:-a91a57fa5a13d516c38b07a141a9ce8a3daabeb0}"
 HERMES_HOME="${HERMES_HOME:-/home/agent/.hermes}"
 HERMES_SRC="${HERMES_SRC:-/opt/hermes/src}"
 HERMES_VENV="${HERMES_VENV:-/opt/hermes/venv}"
+HERMES_DEFAULTS_DIR="${HERMES_DEFAULTS_DIR:-/opt/agent/defaults/hermes}"
 AGENT_HOME="${AGENT_HOME:-/opt/agent}"
 NODE_MAJOR="${NODE_MAJOR:-22}"
 AI_AGENT_SWITCH_VERSION="${AI_AGENT_SWITCH_VERSION:-}"
@@ -170,10 +171,9 @@ install_hermes_runtime() {
 }
 
 write_default_config() {
-  mkdir -p "$HERMES_HOME"
+  mkdir -p "$HERMES_HOME" "$HERMES_DEFAULTS_DIR"
 
-  if [[ ! -f "${HERMES_HOME}/config.yaml" ]]; then
-    cat >"${HERMES_HOME}/config.yaml" <<'CFG'
+  cat >"${HERMES_DEFAULTS_DIR}/config.yaml" <<'CFG'
 model:
   default: gpt-5.4
   provider: auto
@@ -182,10 +182,8 @@ display:
 terminal:
   backend: local
 CFG
-  fi
 
-  if [[ ! -f "${HERMES_HOME}/.env" ]]; then
-    cat >"${HERMES_HOME}/.env" <<'ENVFILE'
+  cat >"${HERMES_DEFAULTS_DIR}/.env" <<'ENVFILE'
 # Put Hermes provider credentials here, for example:
 # OPENAI_API_KEY=
 # OPENROUTER_API_KEY=
@@ -195,7 +193,14 @@ API_SERVER_HOST=0.0.0.0
 API_SERVER_PORT=8642
 # API_SERVER_KEY is supplied by /opt/agent/bin/start unless overridden at runtime.
 ENVFILE
-    chmod 600 "${HERMES_HOME}/.env"
+  chmod 600 "${HERMES_DEFAULTS_DIR}/.env"
+
+  if [[ ! -f "${HERMES_HOME}/config.yaml" ]]; then
+    cp "${HERMES_DEFAULTS_DIR}/config.yaml" "${HERMES_HOME}/config.yaml"
+  fi
+
+  if [[ ! -f "${HERMES_HOME}/.env" ]]; then
+    install -m 0600 "${HERMES_DEFAULTS_DIR}/.env" "${HERMES_HOME}/.env"
   fi
 }
 
@@ -208,6 +213,8 @@ set -euo pipefail
 
 export HERMES_HOME="${HERMES_HOME:-${AGENT_DATA_DIR:-/home/agent/.hermes}}"
 export HERMES_VENV="${HERMES_VENV:-/opt/hermes/venv}"
+export HERMES_DEFAULT_CONFIG_FILE="${HERMES_DEFAULT_CONFIG_FILE:-/opt/agent/defaults/hermes/config.yaml}"
+export HERMES_DEFAULT_ENV_FILE="${HERMES_DEFAULT_ENV_FILE:-/opt/agent/defaults/hermes/.env}"
 export PATH="${HERMES_VENV}/bin:${PATH}"
 export API_SERVER_ENABLED="${API_SERVER_ENABLED:-true}"
 export API_SERVER_HOST="${API_SERVER_HOST:-0.0.0.0}"
@@ -221,6 +228,27 @@ log() {
 
 warn() {
   printf '[%s] [WARN] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >&2
+}
+
+restore_default_file() {
+  local target="$1"
+  local default_file="$2"
+  local mode="$3"
+
+  if [[ -L "$target" && ! -e "$target" ]]; then
+    rm -f "$target"
+  fi
+
+  if [[ -f "$target" ]]; then
+    return 0
+  fi
+
+  if [[ ! -f "$default_file" ]]; then
+    printf '[ERROR] missing Hermes default config: %s\n' "$default_file" >&2
+    exit 1
+  fi
+
+  install -m "$mode" "$default_file" "$target"
 }
 
 agent_hub_model_type() {
@@ -349,31 +377,8 @@ sync_agent_hub_model_config() {
 if [[ "$#" -eq 0 ]]; then
   : "${API_SERVER_KEY:?API_SERVER_KEY is required}"
 
-  if [[ ! -f "${HERMES_HOME}/config.yaml" ]]; then
-    cat >"${HERMES_HOME}/config.yaml" <<'CFG'
-model:
-  default: gpt-5.4
-  provider: auto
-display:
-  skin: default
-terminal:
-  backend: local
-CFG
-  fi
-
-  if [[ ! -f "${HERMES_HOME}/.env" ]]; then
-    cat >"${HERMES_HOME}/.env" <<'ENVFILE'
-# Put Hermes provider credentials here, for example:
-# OPENAI_API_KEY=
-# OPENROUTER_API_KEY=
-# ANTHROPIC_API_KEY=
-API_SERVER_ENABLED=true
-API_SERVER_HOST=0.0.0.0
-API_SERVER_PORT=8642
-# API_SERVER_KEY must be supplied at runtime through env or Kubernetes Secret.
-ENVFILE
-    chmod 600 "${HERMES_HOME}/.env"
-  fi
+  restore_default_file "${HERMES_HOME}/config.yaml" "$HERMES_DEFAULT_CONFIG_FILE" 0644
+  restore_default_file "${HERMES_HOME}/.env" "$HERMES_DEFAULT_ENV_FILE" 0600
 
   sync_agent_hub_model_config
 

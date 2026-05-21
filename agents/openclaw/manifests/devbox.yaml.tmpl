@@ -54,6 +54,10 @@ spec:
         value: {{ quote .Agent.APIServerKey }}
       - name: "OPENCLAW_PUBLIC_ORIGIN"
         value: {{ quote .IngressDomain }}
+      - name: "OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS"
+        value: {{ quote .IngressDomain }}
+      - name: "OPENCLAW_CONTROL_UI_ALLOW_HOST_HEADER_ORIGIN_FALLBACK"
+        value: "true"
       - name: "AGENT_MODEL_PROVIDER"
         value: {{ quote .Agent.ModelProvider }}
       - name: "AGENT_MODEL_BASEURL"

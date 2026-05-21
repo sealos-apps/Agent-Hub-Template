@@ -10,6 +10,7 @@ OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-/home/agent/.openclaw}"
 OPENCLAW_CONFIG_PATH="${OPENCLAW_CONFIG_PATH:-${OPENCLAW_STATE_DIR}/openclaw.json}"
 OPENCLAW_WORKSPACE="${OPENCLAW_WORKSPACE:-/workspace}"
 OPENCLAW_PLUGIN_STAGE_DIR="${OPENCLAW_PLUGIN_STAGE_DIR:-/opt/openclaw/plugin-runtime-deps}"
+OPENCLAW_DEFAULTS_DIR="${OPENCLAW_DEFAULTS_DIR:-/opt/agent/defaults/openclaw}"
 AGENT_HOME="${AGENT_HOME:-/opt/agent}"
 
 log() {
@@ -113,11 +114,11 @@ verify_ai_agent_switch_agent_hub() {
     fail "ai-agent-switch agent-hub init did not return the expected dry-run JSON"
 }
 
-write_default_state() {
-  mkdir -p "$OPENCLAW_STATE_DIR" "$OPENCLAW_WORKSPACE" "$OPENCLAW_PLUGIN_STAGE_DIR"
+write_openclaw_default_config() {
+  local target="$1"
 
-  if [[ ! -f "$OPENCLAW_CONFIG_PATH" ]]; then
-    cat >"$OPENCLAW_CONFIG_PATH" <<EOF_JSON
+  mkdir -p "$(dirname "$target")"
+  cat >"$target" <<EOF_JSON
 {
   "gateway": {
     "mode": "local",
@@ -154,6 +155,15 @@ write_default_state() {
   }
 }
 EOF_JSON
+}
+
+write_default_state() {
+  mkdir -p "$OPENCLAW_STATE_DIR" "$OPENCLAW_WORKSPACE" "$OPENCLAW_PLUGIN_STAGE_DIR" "$OPENCLAW_DEFAULTS_DIR"
+
+  write_openclaw_default_config "${OPENCLAW_DEFAULTS_DIR}/openclaw.json"
+
+  if [[ ! -f "$OPENCLAW_CONFIG_PATH" ]]; then
+    cp "${OPENCLAW_DEFAULTS_DIR}/openclaw.json" "$OPENCLAW_CONFIG_PATH"
   fi
 }
 
@@ -168,6 +178,7 @@ export OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-${AGENT_DATA_DIR:-/home/agent/.
 export OPENCLAW_CONFIG_PATH="${OPENCLAW_CONFIG_PATH:-${OPENCLAW_STATE_DIR}/openclaw.json}"
 export OPENCLAW_WORKSPACE="${OPENCLAW_WORKSPACE:-${AGENT_WORKSPACE:-/workspace}}"
 export OPENCLAW_PLUGIN_STAGE_DIR="${OPENCLAW_PLUGIN_STAGE_DIR:-/opt/openclaw/plugin-runtime-deps}"
+export OPENCLAW_DEFAULT_CONFIG_FILE="${OPENCLAW_DEFAULT_CONFIG_FILE:-/opt/agent/defaults/openclaw/openclaw.json}"
 export PATH="/usr/local/bin:${PATH}"
 
 mkdir -p "$OPENCLAW_STATE_DIR" "$OPENCLAW_WORKSPACE" "$OPENCLAW_PLUGIN_STAGE_DIR"
@@ -178,6 +189,23 @@ log() {
 
 warn() {
   printf '[%s] [WARN] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >&2
+}
+
+restore_openclaw_config() {
+  if [[ -L "$OPENCLAW_CONFIG_PATH" && ! -e "$OPENCLAW_CONFIG_PATH" ]]; then
+    rm -f "$OPENCLAW_CONFIG_PATH"
+  fi
+
+  if [[ -f "$OPENCLAW_CONFIG_PATH" ]]; then
+    return 0
+  fi
+
+  if [[ ! -f "$OPENCLAW_DEFAULT_CONFIG_FILE" ]]; then
+    printf '[ERROR] missing OpenClaw default config: %s\n' "$OPENCLAW_DEFAULT_CONFIG_FILE" >&2
+    exit 1
+  fi
+
+  install -m 0644 "$OPENCLAW_DEFAULT_CONFIG_FILE" "$OPENCLAW_CONFIG_PATH"
 }
 
 agent_hub_model_type() {
@@ -266,22 +294,25 @@ function readConfig(file) {
   }
 }
 
-function normalizeOrigin(value) {
+function originVariants(value) {
   const raw = String(value || "").trim();
-  if (!raw) return undefined;
-  const withScheme = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
-  try {
-    return new URL(withScheme).origin;
-  } catch {
-    return undefined;
-  }
+  if (!raw) return [];
+  const candidates = /^https?:\/\//i.test(raw) ? [raw] : [`https://${raw}`, `http://${raw}`];
+  return candidates
+    .map((candidate) => {
+      try {
+        return new URL(candidate).origin;
+      } catch {
+        return undefined;
+      }
+    })
+    .filter(Boolean);
 }
 
 function envOrigins(name) {
   return String(process.env[name] || "")
     .split(",")
-    .map(normalizeOrigin)
-    .filter(Boolean);
+    .flatMap(originVariants);
 }
 
 function unique(values) {
@@ -305,7 +336,7 @@ const controlUi = config.gateway.controlUi && typeof config.gateway.controlUi ==
   ? config.gateway.controlUi
   : {};
 const configuredOrigins = Array.isArray(controlUi.allowedOrigins)
-  ? controlUi.allowedOrigins.map(normalizeOrigin).filter(Boolean)
+  ? controlUi.allowedOrigins.flatMap(originVariants)
   : [];
 controlUi.enabled = controlUi.enabled ?? true;
 controlUi.allowedOrigins = unique([
@@ -405,6 +436,8 @@ sync_agent_hub_model_config() {
 
 if [[ "$#" -eq 0 ]]; then
   : "${OPENCLAW_GATEWAY_TOKEN:?OPENCLAW_GATEWAY_TOKEN is required}"
+
+  restore_openclaw_config
 
   umask 077
   printf 'OPENCLAW_GATEWAY_TOKEN=%s\n' "$OPENCLAW_GATEWAY_TOKEN" >"${OPENCLAW_STATE_DIR}/.env"

@@ -61,7 +61,11 @@ RUN runuser -u agent -- env \
       OPENCLAW_WORKSPACE="$OPENCLAW_WORKSPACE" \
       OPENCLAW_PLUGIN_STAGE_DIR="$OPENCLAW_PLUGIN_STAGE_DIR" \
       PATH="$PATH" \
-      openclaw doctor --repair --non-interactive
+      openclaw doctor --repair --non-interactive \
+    && mkdir -p /opt/agent/defaults/openclaw \
+    && cp "$OPENCLAW_CONFIG_PATH" /opt/agent/defaults/openclaw/openclaw.json \
+    && chmod 0644 /opt/agent/defaults/openclaw/openclaw.json \
+    && chown -R agent:agent /opt/agent/defaults/openclaw
 
 WORKDIR ${AGENT_WORKSPACE}
 VOLUME ["/workspace", "/home/agent/.openclaw"]
