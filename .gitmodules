@@ -1,0 +1,3 @@
+[submodule "devbox-runtime"]
+	path = devbox-runtime
+	url = https://github.com/gitlayzer/devbox-runtime.git

@@ -64,6 +64,8 @@ spec:
         value: {{ quote .Agent.ModelAPIKey }}
       - name: "AGENT_MODEL"
         value: {{ quote .Agent.Model }}
+      - name: "AGENT_MODEL_API_MODE"
+        value: {{ quote .Agent.ModelAPIMode }}
       - name: "AGENT_TEMPLATE_ID"
         value: {{ quote .Agent.TemplateID }}
       - name: "AGENT_WORKDIR"

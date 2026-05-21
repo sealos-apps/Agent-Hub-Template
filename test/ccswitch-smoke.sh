@@ -9,6 +9,9 @@ HERMES_HOST_PORT="${HERMES_HOST_PORT:-$((28600 + RANDOM % 500))}"
 OPENCLAW_HOST_PORT="${OPENCLAW_HOST_PORT:-$((28700 + RANDOM % 500))}"
 DOCKER_PLATFORM="${DOCKER_PLATFORM:-linux/amd64}"
 BUILD_IMAGES="${BUILD_IMAGES:-1}"
+AGENT_BASE_IMAGE="${AGENT_BASE_IMAGE:-ghcr.io/gitlayzer/agent-devbox-base:0.1.0}"
+AI_AGENT_SWITCH_SOURCE_URL="${AI_AGENT_SWITCH_SOURCE_URL:-https://github.com/sealos-apps/ai-agent-switch.git}"
+AI_AGENT_SWITCH_SOURCE_REF="${AI_AGENT_SWITCH_SOURCE_REF:-9d78561ecbd35ce775f7acfe70e3bdb6617b9b51}"
 CCSWITCH_DIRECT_BASE_URL="${CCSWITCH_DIRECT_BASE_URL:-http://127.0.0.1:15721/v1}"
 CCSWITCH_CONTAINER_BASE_URL="${CCSWITCH_CONTAINER_BASE_URL:-http://host.docker.internal:15721/v1}"
 CCSWITCH_API_KEY="${CCSWITCH_API_KEY:-sk-local-smoke}"
@@ -36,6 +39,12 @@ resolve_ai_agent_switch_version() {
 }
 
 AI_AGENT_SWITCH_VERSION="$(resolve_ai_agent_switch_version)"
+if [[ -z "${AI_AGENT_SWITCH_METADATA:-}" ]]; then
+  AI_AGENT_SWITCH_METADATA="$AI_AGENT_SWITCH_VERSION"
+  if [[ -n "$AI_AGENT_SWITCH_SOURCE_REF" ]]; then
+    AI_AGENT_SWITCH_METADATA="${AI_AGENT_SWITCH_VERSION}+source.${AI_AGENT_SWITCH_SOURCE_REF}"
+  fi
+fi
 
 rewrite_proxy_for_docker() {
   local value="${1:-}"
@@ -197,6 +206,7 @@ verify_ai_agent_switch_image() {
   )"
   printf '%s' "$output" | grep -F '"requiresConfirmation": true' >/dev/null
   docker image inspect "$image" --format '{{ index .Config.Labels "org.sealos.ai-agent-switch.version" }}' | grep -Fx "$AI_AGENT_SWITCH_VERSION" >/dev/null
+  docker image inspect "$image" --format '{{ index .Config.Labels "org.sealos.ai-agent-switch.metadata" }}' | grep -Fx "$AI_AGENT_SWITCH_METADATA" >/dev/null
 }
 
 docker_proxy_args=()
@@ -235,7 +245,11 @@ if [[ "$BUILD_IMAGES" == "1" ]]; then
   docker build \
     --platform "$DOCKER_PLATFORM" \
     --add-host host.docker.internal:host-gateway \
+    --build-arg "AGENT_BASE_IMAGE=${AGENT_BASE_IMAGE}" \
     --build-arg "AI_AGENT_SWITCH_VERSION=${AI_AGENT_SWITCH_VERSION}" \
+    --build-arg "AI_AGENT_SWITCH_METADATA=${AI_AGENT_SWITCH_METADATA}" \
+    --build-arg "AI_AGENT_SWITCH_SOURCE_URL=${AI_AGENT_SWITCH_SOURCE_URL}" \
+    --build-arg "AI_AGENT_SWITCH_SOURCE_REF=${AI_AGENT_SWITCH_SOURCE_REF}" \
     "${docker_proxy_args[@]+"${docker_proxy_args[@]}"}" \
     -f agents/hermes-agent/Dockerfile \
     -t "$HERMES_IMAGE" \
@@ -243,7 +257,11 @@ if [[ "$BUILD_IMAGES" == "1" ]]; then
   docker build \
     --platform "$DOCKER_PLATFORM" \
     --add-host host.docker.internal:host-gateway \
+    --build-arg "AGENT_BASE_IMAGE=${AGENT_BASE_IMAGE}" \
     --build-arg "AI_AGENT_SWITCH_VERSION=${AI_AGENT_SWITCH_VERSION}" \
+    --build-arg "AI_AGENT_SWITCH_METADATA=${AI_AGENT_SWITCH_METADATA}" \
+    --build-arg "AI_AGENT_SWITCH_SOURCE_URL=${AI_AGENT_SWITCH_SOURCE_URL}" \
+    --build-arg "AI_AGENT_SWITCH_SOURCE_REF=${AI_AGENT_SWITCH_SOURCE_REF}" \
     "${docker_proxy_args[@]+"${docker_proxy_args[@]}"}" \
     -f agents/openclaw/Dockerfile \
     -t "$OPENCLAW_IMAGE" \

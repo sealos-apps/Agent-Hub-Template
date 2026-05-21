@@ -23,7 +23,7 @@ agents/my-agent/
 
 ## 文件职责
 
-- `Dockerfile`: 基于 `ghcr.io/gitlayzer/ubuntu:22.04-base` 组装最终镜像，保留 `/init` 入口和 `CMD ["start"]`
+- `Dockerfile`: 基于共享 `AGENT_BASE_IMAGE` 组装最终镜像，保留 `/init` 入口和 `CMD ["start"]`
 - `build.env`: 构建期非敏感默认值，例如 upstream 仓库、版本、安装路径
 - `install.sh`: 安装真实上游 agent，并生成 `/opt/agent/bin/start`
 - `entrypoint.sh`: 所有 agent 共用，保持和 `agents/_template/entrypoint.sh` 完全一致

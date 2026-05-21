@@ -6,6 +6,9 @@ CONTAINER="${CONTAINER:-hermes-smoke-$RANDOM}"
 HOST_PORT="${HOST_PORT:-28642}"
 DOCKER_PLATFORM="${DOCKER_PLATFORM:-linux/amd64}"
 HERMES_API_SERVER_KEY="${HERMES_API_SERVER_KEY:-hermes-smoke-local-token}"
+AGENT_BASE_IMAGE="${AGENT_BASE_IMAGE:-ghcr.io/gitlayzer/agent-devbox-base:0.1.0}"
+AI_AGENT_SWITCH_SOURCE_URL="${AI_AGENT_SWITCH_SOURCE_URL:-https://github.com/sealos-apps/ai-agent-switch.git}"
+AI_AGENT_SWITCH_SOURCE_REF="${AI_AGENT_SWITCH_SOURCE_REF:-9d78561ecbd35ce775f7acfe70e3bdb6617b9b51}"
 
 fail() {
   printf '[ERROR] %s\n' "$*" >&2
@@ -26,6 +29,12 @@ resolve_ai_agent_switch_version() {
 }
 
 AI_AGENT_SWITCH_VERSION="$(resolve_ai_agent_switch_version)"
+if [[ -z "${AI_AGENT_SWITCH_METADATA:-}" ]]; then
+  AI_AGENT_SWITCH_METADATA="$AI_AGENT_SWITCH_VERSION"
+  if [[ -n "$AI_AGENT_SWITCH_SOURCE_REF" ]]; then
+    AI_AGENT_SWITCH_METADATA="${AI_AGENT_SWITCH_VERSION}+source.${AI_AGENT_SWITCH_SOURCE_REF}"
+  fi
+fi
 
 rewrite_proxy_for_docker() {
   local value="${1:-}"
@@ -91,13 +100,19 @@ verify_ai_agent_switch_agent_hub() {
     '
   )"
   printf '%s' "$output" | grep -F '"requiresConfirmation": true' >/dev/null
+  docker image inspect "$IMAGE" --format '{{ index .Config.Labels "org.sealos.ai-agent-switch.version" }}' | grep -Fx "$AI_AGENT_SWITCH_VERSION" >/dev/null
+  docker image inspect "$IMAGE" --format '{{ index .Config.Labels "org.sealos.ai-agent-switch.metadata" }}' | grep -Fx "$AI_AGENT_SWITCH_METADATA" >/dev/null
 }
 
 printf '==> building %s (%s, ai-agent-switch %s)\n' "$IMAGE" "$DOCKER_PLATFORM" "$AI_AGENT_SWITCH_VERSION"
 docker build \
   --platform "$DOCKER_PLATFORM" \
   --add-host host.docker.internal:host-gateway \
+  --build-arg "AGENT_BASE_IMAGE=${AGENT_BASE_IMAGE}" \
   --build-arg "AI_AGENT_SWITCH_VERSION=${AI_AGENT_SWITCH_VERSION}" \
+  --build-arg "AI_AGENT_SWITCH_METADATA=${AI_AGENT_SWITCH_METADATA}" \
+  --build-arg "AI_AGENT_SWITCH_SOURCE_URL=${AI_AGENT_SWITCH_SOURCE_URL}" \
+  --build-arg "AI_AGENT_SWITCH_SOURCE_REF=${AI_AGENT_SWITCH_SOURCE_REF}" \
   "${docker_proxy_args[@]+"${docker_proxy_args[@]}"}" \
   -f agents/hermes-agent/Dockerfile \
   -t "$IMAGE" \

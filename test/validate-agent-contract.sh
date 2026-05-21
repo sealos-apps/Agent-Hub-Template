@@ -134,8 +134,10 @@ validate_dockerfile_contract() {
 
   grep -F 'ARG BASE_PLATFORM=linux/amd64' "$file" >/dev/null || \
     fail "$file must define ARG BASE_PLATFORM=linux/amd64"
-  grep -F 'ghcr.io/gitlayzer/ubuntu:22.04-base' "$file" >/dev/null || \
-    fail "$file must use ghcr.io/gitlayzer/ubuntu:22.04-base"
+  grep -F 'ARG AGENT_BASE_IMAGE=ghcr.io/gitlayzer/agent-devbox-base:0.1.0' "$file" >/dev/null || \
+    fail "$file must define ARG AGENT_BASE_IMAGE=ghcr.io/gitlayzer/agent-devbox-base:0.1.0"
+  grep -F 'FROM --platform=${BASE_PLATFORM} ${AGENT_BASE_IMAGE}' "$file" >/dev/null || \
+    fail "$file must use the shared Agent Hub Devbox base image"
   grep -Eq '^[[:space:]]*ENTRYPOINT[[:space:]]+\[[[:space:]]*"/init"[[:space:]]*,[[:space:]]*"/opt/agent/entrypoint.sh"[[:space:]]*\]' "$file" || \
     fail "$file must keep the /init entrypoint"
   grep -Eq '^[[:space:]]*CMD[[:space:]]+\[[[:space:]]*"start"[[:space:]]*\]' "$file" || \
@@ -215,7 +217,6 @@ required = [
     "access",
     "actions",
     "settings",
-    "regionModelPresets",
 ]
 for key in required:
     if key not in template or template[key] in ("", None):
@@ -271,21 +272,52 @@ if not provider_options:
     raise SystemExit(f"{template_path}: settings.agent.provider must define options")
 
 presets = template.get("regionModelPresets")
-if not isinstance(presets, dict):
-    raise SystemExit(f"{template_path}: regionModelPresets must be a mapping")
-for region in ("us", "cn"):
-    if region not in presets or not isinstance(presets[region], list):
-        raise SystemExit(f"{template_path}: regionModelPresets.{region} must be a list")
-    if not presets[region]:
-        raise SystemExit(f"{template_path}: regionModelPresets.{region} must not be empty")
-    for item in presets[region]:
-        if not isinstance(item, dict):
-            raise SystemExit(f"{template_path}: regionModelPresets.{region} entries must be mappings")
-        for key in ("value", "label", "provider", "apiMode"):
-            if not item.get(key):
-                raise SystemExit(f"{template_path}: regionModelPresets.{region} entries must include {key}")
-        if str(item["provider"]).strip() not in provider_options:
-            raise SystemExit(f"{template_path}: model preset provider {item['provider']} is missing from provider options")
+model_types = template.get("regionModelTypes")
+if presets is None and model_types is None:
+    raise SystemExit(f"{template_path}: regionModelPresets or regionModelTypes is required")
+
+if presets is not None:
+    if not isinstance(presets, dict):
+        raise SystemExit(f"{template_path}: regionModelPresets must be a mapping")
+    for region in ("us", "cn"):
+        if region not in presets or not isinstance(presets[region], list):
+            raise SystemExit(f"{template_path}: regionModelPresets.{region} must be a list")
+        if not presets[region]:
+            raise SystemExit(f"{template_path}: regionModelPresets.{region} must not be empty")
+        for item in presets[region]:
+            if not isinstance(item, dict):
+                raise SystemExit(f"{template_path}: regionModelPresets.{region} entries must be mappings")
+            for key in ("value", "label", "provider", "apiMode"):
+                if not item.get(key):
+                    raise SystemExit(f"{template_path}: regionModelPresets.{region} entries must include {key}")
+            if str(item["provider"]).strip() not in provider_options:
+                raise SystemExit(f"{template_path}: model preset provider {item['provider']} is missing from provider options")
+
+if model_types is not None:
+    if not isinstance(model_types, dict):
+        raise SystemExit(f"{template_path}: regionModelTypes must be a mapping")
+    for region in ("us", "cn"):
+        if region not in model_types or not isinstance(model_types[region], list):
+            raise SystemExit(f"{template_path}: regionModelTypes.{region} must be a list")
+        if not model_types[region]:
+            raise SystemExit(f"{template_path}: regionModelTypes.{region} must not be empty")
+        for group in model_types[region]:
+            if not isinstance(group, dict):
+                raise SystemExit(f"{template_path}: regionModelTypes.{region} entries must be mappings")
+            for key in ("key", "label", "models"):
+                if not group.get(key):
+                    raise SystemExit(f"{template_path}: regionModelTypes.{region} entries must include {key}")
+            models = group.get("models")
+            if not isinstance(models, list) or not models:
+                raise SystemExit(f"{template_path}: regionModelTypes.{region}.{group.get('key')} models must be a non-empty list")
+            for item in models:
+                if not isinstance(item, dict):
+                    raise SystemExit(f"{template_path}: regionModelTypes.{region}.{group.get('key')} models must be mappings")
+                for key in ("value", "label", "provider", "apiMode"):
+                    if not item.get(key):
+                        raise SystemExit(f"{template_path}: regionModelTypes.{region}.{group.get('key')} models must include {key}")
+                if str(item["provider"]).strip() not in provider_options:
+                    raise SystemExit(f"{template_path}: model provider {item['provider']} is missing from provider options")
 
 if template.get("backendSupported") is True:
     if template.get("manifestDir") != "manifests":
@@ -401,6 +433,23 @@ validate_agent_hub_template_contract() {
 }
 
 validate_workflow_contracts() {
+  [[ -f .gitmodules ]] || fail ".gitmodules is required so Actions can fetch devbox-runtime"
+  grep -F '[submodule "devbox-runtime"]' .gitmodules >/dev/null || \
+    fail ".gitmodules must define devbox-runtime"
+  grep -F 'url = https://github.com/gitlayzer/devbox-runtime.git' .gitmodules >/dev/null || \
+    fail ".gitmodules must pin the devbox-runtime source repository"
+  grep -F 'submodules: recursive' .github/workflows/build.yml >/dev/null || \
+    fail ".github/workflows/build.yml must checkout devbox-runtime submodule before base builds"
+  grep -F 'submodules: recursive' .github/workflows/release.yml >/dev/null || \
+    fail ".github/workflows/release.yml must checkout devbox-runtime submodule before base builds"
+  grep -F 'or ".gitmodules" in changed_files' .github/workflows/build.yml >/dev/null || \
+    fail ".github/workflows/build.yml must rebuild agents when .gitmodules changes"
+  grep -F 'path == "devbox-runtime" or path.startswith("devbox-runtime/")' .github/workflows/build.yml >/dev/null || \
+    fail ".github/workflows/build.yml must rebuild agents when devbox-runtime changes"
+  grep -F 'COPY devbox-runtime/tooling/scripts' base/Dockerfile >/dev/null || \
+    fail "base/Dockerfile must copy devbox-runtime tooling scripts"
+  grep -F 'COPY devbox-runtime/tooling/docs' base/Dockerfile >/dev/null || \
+    fail "base/Dockerfile must copy devbox-runtime tooling docs"
   grep -F 'source_ref="9d78561ecbd35ce775f7acfe70e3bdb6617b9b51"' .github/workflows/build.yml >/dev/null || \
     fail ".github/workflows/build.yml must build ai-agent-switch from the Agent Hub init source ref"
   grep -F 'source_ref="9d78561ecbd35ce775f7acfe70e3bdb6617b9b51"' .github/workflows/release.yml >/dev/null || \
@@ -457,8 +506,12 @@ for agent_dir in "${agents[@]}"; do
   if [[ "$agent_dir" != "agents/_template" ]]; then
     grep -F 'AI_AGENT_SWITCH_VERSION is required' "$agent_dir/install.sh" >/dev/null || \
       fail "$agent_dir/install.sh must require AI_AGENT_SWITCH_VERSION"
-    grep -F 'npm install -g "ai-agent-switch@${AI_AGENT_SWITCH_VERSION}"' "$agent_dir/install.sh" >/dev/null || \
+    grep -F 'install_ai_agent_switch_from_npm' "$agent_dir/install.sh" >/dev/null || \
       fail "$agent_dir/install.sh must install ai-agent-switch from AI_AGENT_SWITCH_VERSION"
+    grep -F 'npm install -g --prefix "$prefix" "ai-agent-switch@${AI_AGENT_SWITCH_VERSION}"' "$agent_dir/install.sh" >/dev/null || \
+      fail "$agent_dir/install.sh must install ai-agent-switch into an isolated prefix"
+    grep -F 'ln -sf "${prefix}/bin/ai-agent-switch" /usr/local/bin/ai-agent-switch' "$agent_dir/install.sh" >/dev/null || \
+      fail "$agent_dir/install.sh must expose only the ai-agent-switch command globally"
     grep -F 'AI_AGENT_SWITCH_SOURCE_URL' "$agent_dir/install.sh" >/dev/null || \
       fail "$agent_dir/install.sh must support explicit ai-agent-switch source builds"
     grep -F 'install_ai_agent_switch_from_source' "$agent_dir/install.sh" >/dev/null || \

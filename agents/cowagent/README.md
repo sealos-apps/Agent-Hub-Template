@@ -20,7 +20,7 @@ This agent follows the shared Agent Hub runtime contract:
 
 ## Build contents
 
-- `Dockerfile`: builds the runtime image from `ghcr.io/gitlayzer/ubuntu:22.04-base`
+- `Dockerfile`: builds the runtime image from the shared Agent Hub Devbox base
 - `build.env`: pins upstream source and build-time options
 - `install.sh`: installs CowAgent from upstream source and writes `/opt/agent/bin/start`
 - `entrypoint.sh`: shared Agent Hub command router
@@ -104,6 +104,7 @@ Example:
 ```bash
 docker build \
   --build-arg BASE_PLATFORM=linux/amd64 \
+  --build-arg AGENT_BASE_IMAGE=ghcr.io/gitlayzer/agent-devbox-base:0.1.0 \
   -f agents/cowagent/Dockerfile \
   -t agent-hub/cowagent:dev .
 ```

@@ -39,12 +39,17 @@ Each agent directory must not contain:
 
 The Dockerfile must:
 
-- use `ghcr.io/gitlayzer/ubuntu:22.04-base`
 - define `ARG BASE_PLATFORM=linux/amd64`
+- define `ARG AGENT_BASE_IMAGE=ghcr.io/gitlayzer/agent-devbox-base:0.1.0`
+- use `FROM --platform=${BASE_PLATFORM} ${AGENT_BASE_IMAGE}`
 - preserve `ENTRYPOINT ["/init", "/opt/agent/entrypoint.sh"]`
 - use `CMD ["start"]`
 - copy the shared `entrypoint.sh` to `/opt/agent/entrypoint.sh`
 - run `install.sh` during image build
+
+The shared base image is built from `base/` and carries the Devbox runtime
+contract: `/init`, s6 services, SSH support, `devbox` and `agent` users,
+`/workspace`, Node.js 22, Python tooling, `uv`, and common agent utilities.
 
 ## Metadata Contract
 

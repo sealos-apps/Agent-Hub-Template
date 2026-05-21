@@ -3,4 +3,10 @@
 .idea
 docs
 test
+devbox-runtime/**
+!devbox-runtime/tooling/
+!devbox-runtime/tooling/scripts/
+!devbox-runtime/tooling/scripts/**
+!devbox-runtime/tooling/docs
+!devbox-runtime/tooling/docs/**
 **/.DS_Store

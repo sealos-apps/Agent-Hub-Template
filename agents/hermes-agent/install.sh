@@ -77,9 +77,16 @@ install_ai_agent_switch() {
   if [[ -n "$AI_AGENT_SWITCH_SOURCE_URL" ]]; then
     install_ai_agent_switch_from_source
   else
-    npm install -g "ai-agent-switch@${AI_AGENT_SWITCH_VERSION}"
+    install_ai_agent_switch_from_npm
   fi
   verify_ai_agent_switch_agent_hub
+}
+
+install_ai_agent_switch_from_npm() {
+  local prefix="/opt/ai-agent-switch"
+  mkdir -p "$prefix"
+  npm install -g --prefix "$prefix" "ai-agent-switch@${AI_AGENT_SWITCH_VERSION}"
+  ln -sf "${prefix}/bin/ai-agent-switch" /usr/local/bin/ai-agent-switch
 }
 
 install_ai_agent_switch_from_source() {
@@ -208,6 +215,137 @@ export API_SERVER_PORT="${API_SERVER_PORT:-${AGENT_PORT:-8642}}"
 
 mkdir -p "$HERMES_HOME" "${AGENT_WORKSPACE:-/workspace}"
 
+log() {
+  printf '[%s] [INFO] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"
+}
+
+warn() {
+  printf '[%s] [WARN] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >&2
+}
+
+agent_hub_model_type() {
+  local api_mode="${AGENT_MODEL_API_MODE:-}"
+  case "$api_mode" in
+    codex_responses|openai-responses|responses)
+      printf 'openai-responses'
+      ;;
+    anthropic_messages|anthropic)
+      printf 'anthropic'
+      ;;
+    chat_completions|openai_chat|openai-chat-compatible|"")
+      case "${AGENT_MODEL_PROVIDER:-}" in
+        custom:aiproxy-responses)
+          printf 'openai-responses'
+          ;;
+        custom:aiproxy-anthropic)
+          printf 'anthropic'
+          ;;
+        *)
+          printf 'openai-chat-compatible'
+          ;;
+      esac
+      ;;
+    image_generation)
+      printf 'openai-responses'
+      ;;
+    *)
+      printf 'openai-chat-compatible'
+      ;;
+  esac
+}
+
+agent_hub_provider_id() {
+  case "${AGENT_MODEL_PROVIDER:-}" in
+    custom:aiproxy-chat)
+      printf 'aiproxy-chat'
+      ;;
+    custom:aiproxy-responses)
+      printf 'aiproxy-responses'
+      ;;
+    custom:aiproxy-anthropic)
+      printf 'aiproxy-anthropic'
+      ;;
+    *)
+      printf '%s' "${AGENT_MODEL_PROVIDER:-agent-hub}" \
+        | tr '[:upper:]' '[:lower:]' \
+        | sed -E 's/^custom://; s/[^a-z0-9._-]+/-/g; s/^-+//; s/-+$//' \
+        | sed -E 's/^$/agent-hub/'
+      ;;
+  esac
+}
+
+agent_hub_provider_name() {
+  case "${AGENT_MODEL_PROVIDER:-}" in
+    custom:aiproxy-chat)
+      printf 'AI Proxy Chat Completions'
+      ;;
+    custom:aiproxy-responses)
+      printf 'AI Proxy Responses'
+      ;;
+    custom:aiproxy-anthropic)
+      printf 'AI Proxy Anthropic Messages'
+      ;;
+    *)
+      printf '%s' "$(agent_hub_provider_id)"
+      ;;
+  esac
+}
+
+sync_agent_hub_model_config() {
+  local provider="${AGENT_MODEL_PROVIDER:-}"
+  local base_url="${AGENT_MODEL_BASEURL:-}"
+  local model="${AGENT_MODEL:-}"
+  local api_key_env
+  local model_type
+  local provider_id
+  local provider_name
+  local output
+
+  if [[ -z "$provider" || -z "$base_url" || -z "$model" ]]; then
+    warn "skipping Agent Hub model sync because provider, base URL, or model is empty"
+    return 0
+  fi
+
+  if [[ "$provider" == custom:aiproxy-* ]]; then
+    export AIPROXY_API_KEY="${AIPROXY_API_KEY:-${AGENT_MODEL_APIKEY:-}}"
+    api_key_env="AIPROXY_API_KEY"
+  else
+    api_key_env="AGENT_MODEL_APIKEY"
+  fi
+
+  if [[ -z "${!api_key_env:-}" ]]; then
+    warn "skipping Agent Hub model sync because ${api_key_env} is empty"
+    return 0
+  fi
+
+  if ! command -v ai-agent-switch >/dev/null 2>&1; then
+    warn "skipping Agent Hub model sync because ai-agent-switch is not available"
+    return 0
+  fi
+
+  model_type="$(agent_hub_model_type)"
+  provider_id="$(agent_hub_provider_id)"
+  provider_name="$(agent_hub_provider_name)"
+
+  if output="$(
+    HOME="${HOME:-/home/agent}" ai-agent-switch agent-hub init \
+      --client hermes \
+      --provider-id "$provider_id" \
+      --provider-name "$provider_name" \
+      --model-type "$model_type" \
+      --base-url "$base_url" \
+      --api-key-env "$api_key_env" \
+      --model "$model" \
+      --available-model "${model}:${model_type}" \
+      -y \
+      --json 2>&1
+  )"; then
+    log "synced Agent Hub model config for Hermes: ${provider_id}/${model} (${model_type})"
+  else
+    warn "Agent Hub model sync failed: ${output}"
+  fi
+}
+
 if [[ "$#" -eq 0 ]]; then
   : "${API_SERVER_KEY:?API_SERVER_KEY is required}"
 
@@ -236,6 +374,8 @@ API_SERVER_PORT=8642
 ENVFILE
     chmod 600 "${HERMES_HOME}/.env"
   fi
+
+  sync_agent_hub_model_config
 
   exec hermes gateway run
 fi

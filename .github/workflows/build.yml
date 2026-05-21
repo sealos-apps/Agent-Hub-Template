@@ -21,6 +21,9 @@ permissions:
   contents: read
   packages: read
 
+env:
+  AGENT_BASE_IMAGE: agent-hub/agent-devbox-base:ci-${{ github.run_id }}
+
 jobs:
   prepare:
     if: github.event_name != 'push' || github.actor != 'github-actions[bot]'
@@ -171,7 +174,10 @@ jobs:
               event_name == "workflow_dispatch"
               or build_all_from_ref
               or "registry/agents.yaml" in changed_files
+              or ".gitmodules" in changed_files
               or ".github/workflows/build.yml" in changed_files
+              or any(path == "devbox-runtime" or path.startswith("devbox-runtime/") for path in changed_files)
+              or any(path.startswith("base/") for path in changed_files)
               or any(path.startswith("agents/_template/") for path in changed_files)
           )
 
@@ -201,8 +207,39 @@ jobs:
               )
           PY
 
-  build:
+  build-base:
     needs: prepare
+    if: needs.prepare.outputs.count != '0'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Validate base shell scripts
+        run: |
+          find base -type f -name '*.sh' | sort | while IFS= read -r file; do
+            bash -n "$file"
+          done
+
+      - name: Build base image
+        run: |
+          docker build \
+            --file base/Dockerfile \
+            --tag "$AGENT_BASE_IMAGE" \
+            .
+
+      - name: Verify base image
+        run: IMAGE="$AGENT_BASE_IMAGE" bash base/smoke.sh
+
+  build:
+    needs:
+      - prepare
+      - build-base
     if: needs.prepare.outputs.count != '0'
     runs-on: ubuntu-latest
     strategy:
@@ -211,6 +248,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -221,9 +260,17 @@ jobs:
             bash -n "$file"
           done
 
+      - name: Build local base image
+        run: |
+          docker build \
+            --file base/Dockerfile \
+            --tag "$AGENT_BASE_IMAGE" \
+            .
+
       - name: Build agent image
         run: |
           docker build \
+            --build-arg "AGENT_BASE_IMAGE=${AGENT_BASE_IMAGE}" \
             --build-arg "AI_AGENT_SWITCH_VERSION=${{ needs.prepare.outputs['ai-agent-switch-version'] }}" \
             --build-arg "AI_AGENT_SWITCH_METADATA=${{ needs.prepare.outputs['ai-agent-switch-metadata'] }}" \
             --build-arg "AI_AGENT_SWITCH_SOURCE_URL=${{ needs.prepare.outputs['ai-agent-switch-source-url'] }}" \

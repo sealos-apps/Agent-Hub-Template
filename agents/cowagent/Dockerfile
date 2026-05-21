@@ -1,5 +1,6 @@
 ARG BASE_PLATFORM=linux/amd64
-FROM --platform=${BASE_PLATFORM} ghcr.io/gitlayzer/ubuntu:22.04-base
+ARG AGENT_BASE_IMAGE=ghcr.io/gitlayzer/agent-devbox-base:0.1.0
+FROM --platform=${BASE_PLATFORM} ${AGENT_BASE_IMAGE}
 
 ARG AI_AGENT_SWITCH_VERSION
 ARG AI_AGENT_SWITCH_METADATA

@@ -5,7 +5,10 @@ IMAGE="${IMAGE:-agent-hub/openclaw:local}"
 CONTAINER="${CONTAINER:-openclaw-smoke-$RANDOM}"
 HOST_PORT="${HOST_PORT:-28789}"
 DOCKER_PLATFORM="${DOCKER_PLATFORM:-linux/amd64}"
-OPENCLAW_GATEWAY_TOKEN="${OPENCLAW_GATEWAY_TOKEN:-openclaw-smoke-local-token}"
+OPENCLAW_GATEWAY_TOKEN="${OPENCLAW_GATEWAY_TOKEN:-sk-openclaw-smoke-local-token}"
+AGENT_BASE_IMAGE="${AGENT_BASE_IMAGE:-ghcr.io/gitlayzer/agent-devbox-base:0.1.0}"
+AI_AGENT_SWITCH_SOURCE_URL="${AI_AGENT_SWITCH_SOURCE_URL:-https://github.com/sealos-apps/ai-agent-switch.git}"
+AI_AGENT_SWITCH_SOURCE_REF="${AI_AGENT_SWITCH_SOURCE_REF:-9d78561ecbd35ce775f7acfe70e3bdb6617b9b51}"
 
 fail() {
   printf '[ERROR] %s\n' "$*" >&2
@@ -26,6 +29,12 @@ resolve_ai_agent_switch_version() {
 }
 
 AI_AGENT_SWITCH_VERSION="$(resolve_ai_agent_switch_version)"
+if [[ -z "${AI_AGENT_SWITCH_METADATA:-}" ]]; then
+  AI_AGENT_SWITCH_METADATA="$AI_AGENT_SWITCH_VERSION"
+  if [[ -n "$AI_AGENT_SWITCH_SOURCE_REF" ]]; then
+    AI_AGENT_SWITCH_METADATA="${AI_AGENT_SWITCH_VERSION}+source.${AI_AGENT_SWITCH_SOURCE_REF}"
+  fi
+fi
 
 rewrite_proxy_for_docker() {
   local value="${1:-}"
@@ -91,13 +100,19 @@ verify_ai_agent_switch_agent_hub() {
     '
   )"
   printf '%s' "$output" | grep -F '"requiresConfirmation": true' >/dev/null
+  docker image inspect "$IMAGE" --format '{{ index .Config.Labels "org.sealos.ai-agent-switch.version" }}' | grep -Fx "$AI_AGENT_SWITCH_VERSION" >/dev/null
+  docker image inspect "$IMAGE" --format '{{ index .Config.Labels "org.sealos.ai-agent-switch.metadata" }}' | grep -Fx "$AI_AGENT_SWITCH_METADATA" >/dev/null
 }
 
 printf '==> building %s (%s, ai-agent-switch %s)\n' "$IMAGE" "$DOCKER_PLATFORM" "$AI_AGENT_SWITCH_VERSION"
 docker build \
   --platform "$DOCKER_PLATFORM" \
   --add-host host.docker.internal:host-gateway \
+  --build-arg "AGENT_BASE_IMAGE=${AGENT_BASE_IMAGE}" \
   --build-arg "AI_AGENT_SWITCH_VERSION=${AI_AGENT_SWITCH_VERSION}" \
+  --build-arg "AI_AGENT_SWITCH_METADATA=${AI_AGENT_SWITCH_METADATA}" \
+  --build-arg "AI_AGENT_SWITCH_SOURCE_URL=${AI_AGENT_SWITCH_SOURCE_URL}" \
+  --build-arg "AI_AGENT_SWITCH_SOURCE_REF=${AI_AGENT_SWITCH_SOURCE_REF}" \
   "${docker_proxy_args[@]+"${docker_proxy_args[@]}"}" \
   -f agents/openclaw/Dockerfile \
   -t "$IMAGE" \
@@ -141,5 +156,7 @@ docker exec --user agent -e HOME=/home/agent "$CONTAINER" ai-agent-switch agent-
 
 docker exec --user agent -e HOME=/home/agent "$CONTAINER" ai-agent-switch client show openclaw --json | python3 -c 'import json, sys; payload=json.load(sys.stdin); assert payload["providerId"] == "aiproxy", payload; assert payload["modelId"] == "glm-4.6", payload'
 docker exec "$CONTAINER" sh -lc 'grep -q "\"primary\": \"aiproxy/glm-4.6\"" /home/agent/.openclaw/openclaw.json'
+docker exec "$CONTAINER" sh -lc 'grep -q "^OPENCLAW_GATEWAY_TOKEN=sk-openclaw-smoke-local-token$" /home/agent/.openclaw/.env'
+docker exec "$CONTAINER" node -e 'const fs=require("fs"); const cfg=JSON.parse(fs.readFileSync("/home/agent/.openclaw/openclaw.json","utf8")); if (cfg.gateway?.auth?.token !== process.env.OPENCLAW_GATEWAY_TOKEN) throw new Error(`gateway token mismatch: ${cfg.gateway?.auth?.token}`);'
 
 printf '==> OpenClaw smoke passed\n'

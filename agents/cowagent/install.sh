@@ -66,9 +66,16 @@ install_ai_agent_switch() {
   if [[ -n "$AI_AGENT_SWITCH_SOURCE_URL" ]]; then
     install_ai_agent_switch_from_source
   else
-    npm install -g "ai-agent-switch@${AI_AGENT_SWITCH_VERSION}"
+    install_ai_agent_switch_from_npm
   fi
   verify_ai_agent_switch_agent_hub
+}
+
+install_ai_agent_switch_from_npm() {
+  local prefix="/opt/ai-agent-switch"
+  mkdir -p "$prefix"
+  npm install -g --prefix "$prefix" "ai-agent-switch@${AI_AGENT_SWITCH_VERSION}"
+  ln -sf "${prefix}/bin/ai-agent-switch" /usr/local/bin/ai-agent-switch
 }
 
 install_ai_agent_switch_from_source() {
