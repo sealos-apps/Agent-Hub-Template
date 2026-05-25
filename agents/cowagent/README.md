@@ -27,9 +27,7 @@ This agent follows the shared Agent Hub runtime contract:
 - `index.json`: Agent Hub display metadata
 - `template.yaml` and `manifests/`: Agent Hub deployment template
 
-The pinned upstream source ref is `2.0.8`.
-
-Agent Hub test image: `ghcr.io/gitlayzer/cowagent:2.0.8-agenthub-test.2`.
+The pinned upstream source ref is `2.0.9`.
 
 ## Startup behavior
 
@@ -95,7 +93,7 @@ environment variables.
 
 `build.env` supports:
 
-- `COWAGENT_REF`: upstream git tag or branch, currently `2.0.8`
+- `COWAGENT_REF`: upstream git tag or branch, currently `2.0.9`
 - `COWAGENT_INSTALL_OPTIONAL`: install optional parsing/voice packages, default `true`
 - `COWAGENT_INSTALL_AGENTMESH`: install `agentmesh-sdk` for CowAgent's agent plugin, default `true`
 - `COWAGENT_INSTALL_BROWSER`: install Playwright browser support, default `false`

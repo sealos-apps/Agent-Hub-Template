@@ -21,8 +21,8 @@ ENV AGENT_NAME=cowagent \
 LABEL org.opencontainers.image.title="CowAgent" \
       org.opencontainers.image.description="CowAgent runtime image packaged for Agent Hub" \
       org.opencontainers.image.source="agents/cowagent" \
-      org.opencontainers.image.version="2.0.8" \
-      org.sealos.agent.version="2.0.8" \
+      org.opencontainers.image.version="2.0.9" \
+      org.sealos.agent.version="2.0.9" \
       org.sealos.ai-agent-switch.version="${AI_AGENT_SWITCH_VERSION}" \
       org.sealos.ai-agent-switch.metadata="${AI_AGENT_SWITCH_METADATA}"
 
