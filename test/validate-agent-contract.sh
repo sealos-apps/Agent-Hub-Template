@@ -121,8 +121,10 @@ if data.get("id") != "_template":
     image = str(data["image"])
     if not image.endswith(f":{image_tag}"):
         raise SystemExit(f"{path}: image tag must match image_tag {image_tag}")
-    if data.get("image_tag") is not None and not str(data["image_tag"]).startswith(f"{version}-"):
-        raise SystemExit(f"{path}: image_tag must be derived from version {version}")
+    if data.get("image_tag") is not None:
+        floating_tags = {"master"}
+        if image_tag not in floating_tags and not image_tag.startswith(f"{version}-"):
+            raise SystemExit(f"{path}: image_tag must be derived from version {version} or be one of {sorted(floating_tags)}")
     switch_version = data.get("ai_agent_switch_version")
     if not switch_version:
         raise SystemExit(f"{path}: missing required key ai_agent_switch_version")

@@ -3,7 +3,7 @@ set -euo pipefail
 
 AGENT_HOME="${AGENT_HOME:-/opt/agent}"
 COWAGENT_GIT_URL="${COWAGENT_GIT_URL:-https://github.com/zhayujie/CowAgent.git}"
-COWAGENT_REF="${COWAGENT_REF:-2.0.9}"
+COWAGENT_REF="${COWAGENT_REF:-master}"
 COWAGENT_SRC="${COWAGENT_SRC:-/opt/cowagent/src}"
 COWAGENT_VENV="${COWAGENT_VENV:-/opt/cowagent/venv}"
 COWAGENT_HOME="${COWAGENT_HOME:-/home/agent/.cowagent}"
