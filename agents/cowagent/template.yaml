@@ -145,28 +145,28 @@ regionModelTypes:
           capabilities: [chat]
           inputModalities: [text]
           outputModalities: [text]
-    - key: multimodal
-      label: 多模态模型
-      models:
-        - value: glm-4.6v
-          label: GLM-4.6V
-          helper: GLM
-          provider: custom:aiproxy-chat
-          apiMode: chat_completions
-          capabilities: [vision, multimodal]
-          inputModalities: [text, image]
-          outputModalities: [text]
-    - key: image
-      label: 生图模型
-      models:
-        - value: gpt-image-2
-          label: GPT Image 2
-          helper: OpenAI
-          provider: custom:aiproxy-responses
-          apiMode: image_generation
-          capabilities: [image_generation]
-          inputModalities: [text, image]
-          outputModalities: [image]
+    # - key: multimodal
+    #   label: 多模态模型
+    #   models:
+    #     - value: glm-4.6v
+    #       label: GLM-4.6V
+    #       helper: GLM
+    #       provider: custom:aiproxy-chat
+    #       apiMode: chat_completions
+    #       capabilities: [vision, multimodal]
+    #       inputModalities: [text, image]
+    #       outputModalities: [text]
+    # - key: image
+    #   label: 生图模型
+    #   models:
+    #     - value: gpt-image-2
+    #       label: GPT Image 2
+    #       helper: OpenAI
+    #       provider: custom:aiproxy-responses
+    #       apiMode: image_generation
+    #       capabilities: [image_generation]
+    #       inputModalities: [text, image]
+    #       outputModalities: [image]
   cn:
     - key: text
       label: 普通模型
@@ -203,25 +203,25 @@ regionModelTypes:
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
-    - key: multimodal
-      label: 多模态模型
-      models:
-        - value: qwen3-vl-plus
-          label: Qwen3 VL Plus
-          helper: Qwen
-          provider: custom:aiproxy-chat
-          apiMode: chat_completions
-          capabilities: [vision, multimodal]
-          inputModalities: [text, image]
-          outputModalities: [text]
-    - key: image
-      label: 生图模型
-      models:
-        - value: cogview-4
-          label: CogView 4
-          helper: GLM
-          provider: custom:aiproxy-chat
-          apiMode: image_generation
-          capabilities: [image_generation]
-          inputModalities: [text]
-          outputModalities: [image]
+    # - key: multimodal
+    #   label: 多模态模型
+    #   models:
+    #     - value: qwen3-vl-plus
+    #       label: Qwen3 VL Plus
+    #       helper: Qwen
+    #       provider: custom:aiproxy-chat
+    #       apiMode: chat_completions
+    #       capabilities: [vision, multimodal]
+    #       inputModalities: [text, image]
+    #       outputModalities: [text]
+    # - key: image
+    #   label: 生图模型
+    #   models:
+    #     - value: cogview-4
+    #       label: CogView 4
+    #       helper: GLM
+    #       provider: custom:aiproxy-chat
+    #       apiMode: image_generation
+    #       capabilities: [image_generation]
+    #       inputModalities: [text]
+    #       outputModalities: [image]
