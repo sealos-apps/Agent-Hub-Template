@@ -158,5 +158,6 @@ docker exec --user agent -e HOME=/home/agent "$CONTAINER" ai-agent-switch client
 docker exec "$CONTAINER" sh -lc 'grep -q "\"primary\": \"aiproxy/glm-4.6\"" /home/agent/.openclaw/openclaw.json'
 docker exec "$CONTAINER" sh -lc 'grep -q "^OPENCLAW_GATEWAY_TOKEN=sk-openclaw-smoke-local-token$" /home/agent/.openclaw/.env'
 docker exec "$CONTAINER" node -e 'const fs=require("fs"); const cfg=JSON.parse(fs.readFileSync("/home/agent/.openclaw/openclaw.json","utf8")); if (cfg.gateway?.auth?.token !== process.env.OPENCLAW_GATEWAY_TOKEN) throw new Error(`gateway token mismatch: ${cfg.gateway?.auth?.token}`);'
+docker exec "$CONTAINER" node -e 'const fs=require("fs"); const cfg=JSON.parse(fs.readFileSync("/home/agent/.openclaw/openclaw.json","utf8")); if (cfg.gateway?.controlUi?.dangerouslyDisableDeviceAuth !== true) throw new Error("control UI device auth is not disabled");'
 
 printf '==> OpenClaw smoke passed\n'

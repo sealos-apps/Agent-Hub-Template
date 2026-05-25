@@ -129,7 +129,8 @@ write_openclaw_default_config() {
     },
     "controlUi": {
       "enabled": true,
-      "allowedOrigins": []
+      "allowedOrigins": [],
+      "dangerouslyDisableDeviceAuth": true
     }
   },
   "agents": {
@@ -344,6 +345,9 @@ controlUi.allowedOrigins = unique([
   ...envOrigins("OPENCLAW_PUBLIC_ORIGIN"),
   ...envOrigins("OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS"),
 ]);
+controlUi.dangerouslyDisableDeviceAuth = process.env.OPENCLAW_CONTROL_UI_DISABLE_DEVICE_AUTH === "false"
+  ? false
+  : true;
 if (process.env.OPENCLAW_CONTROL_UI_ALLOW_HOST_HEADER_ORIGIN_FALLBACK) {
   controlUi.dangerouslyAllowHostHeaderOriginFallback = process.env.OPENCLAW_CONTROL_UI_ALLOW_HOST_HEADER_ORIGIN_FALLBACK === "true";
 }

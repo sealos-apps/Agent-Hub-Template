@@ -58,6 +58,8 @@ spec:
         value: {{ quote .IngressDomain }}
       - name: "OPENCLAW_CONTROL_UI_ALLOW_HOST_HEADER_ORIGIN_FALLBACK"
         value: "true"
+      - name: "OPENCLAW_CONTROL_UI_DISABLE_DEVICE_AUTH"
+        value: "true"
       - name: "AGENT_MODEL_PROVIDER"
         value: {{ quote .Agent.ModelProvider }}
       - name: "AGENT_MODEL_BASEURL"
