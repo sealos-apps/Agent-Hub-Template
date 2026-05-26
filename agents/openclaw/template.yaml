@@ -2,7 +2,7 @@ id: openclaw
 name: OpenClaw
 shortName: OpenClaw
 description: OpenClaw gateway adapter for browser automation agents with Web UI, terminal, files, and settings access.
-image: ghcr.io/gitlayzer/openclaw:2026.5.19-agenthub-test.3
+image: ghcr.io/nightwhite/openclaw:2026.5.19-agenthub-test.3
 port: 18789
 defaultArgs:
   - start
