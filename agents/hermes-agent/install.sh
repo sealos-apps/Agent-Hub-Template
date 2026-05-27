@@ -1,179 +1,58 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+AGENT_HOME="${AGENT_HOME:-/opt/agent}"
 HERMES_GIT_URL="${HERMES_GIT_URL:-https://github.com/NousResearch/hermes-agent.git}"
-HERMES_BRANCH="${HERMES_BRANCH:-v2026.5.16}"
-HERMES_REF="${HERMES_REF:-a91a57fa5a13d516c38b07a141a9ce8a3daabeb0}"
-HERMES_HOME="${HERMES_HOME:-/home/agent/.hermes}"
 HERMES_SRC="${HERMES_SRC:-/opt/hermes/src}"
 HERMES_VENV="${HERMES_VENV:-/opt/hermes/venv}"
+HERMES_HOME="${HERMES_HOME:-/root/.hermes}"
 HERMES_DEFAULTS_DIR="${HERMES_DEFAULTS_DIR:-/opt/agent/defaults/hermes}"
-AGENT_HOME="${AGENT_HOME:-/opt/agent}"
-NODE_MAJOR="${NODE_MAJOR:-22}"
-AI_AGENT_SWITCH_VERSION="${AI_AGENT_SWITCH_VERSION:-}"
-AI_AGENT_SWITCH_SOURCE_URL="${AI_AGENT_SWITCH_SOURCE_URL:-}"
-AI_AGENT_SWITCH_SOURCE_REF="${AI_AGENT_SWITCH_SOURCE_REF:-}"
-UV_BIN="${UV_BIN:-/root/.local/bin/uv}"
-UV_PYTHON_INSTALL_DIR="${UV_PYTHON_INSTALL_DIR:-/opt/uv/python}"
-
-log() {
-  printf '[%s] [INFO] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"
-}
+UV_BIN="${UV_BIN:-/usr/local/bin/uv}"
+AI_AGENT_SWITCH_INSTALL_URL="${AI_AGENT_SWITCH_INSTALL_URL:-https://raw.githubusercontent.com/sealos-apps/ai-agent-switch/main/install.sh}"
+AI_AGENT_SWITCH_LATEST_RELEASE_URL="${AI_AGENT_SWITCH_LATEST_RELEASE_URL:-https://api.github.com/repos/sealos-apps/ai-agent-switch/releases/latest}"
 
 fail() {
-  printf '[%s] [ERROR] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >&2
+  printf '[ERROR] %s\n' "$*" >&2
   exit 1
-}
-
-retry() {
-  local max_attempts="${RETRY_MAX_ATTEMPTS:-3}"
-  local attempt=1
-  local exit_code=0
-
-  while true; do
-    if "$@"; then
-      return 0
-    fi
-
-    exit_code=$?
-    if [[ "$attempt" -ge "$max_attempts" ]]; then
-      return "$exit_code"
-    fi
-
-    log "command failed (attempt ${attempt}/${max_attempts}), retrying: $*"
-    sleep $((attempt * 3))
-    attempt=$((attempt + 1))
-  done
-}
-
-prepare_install_env() {
-  export DEBIAN_FRONTEND=noninteractive
 }
 
 install_system_packages() {
   apt-get update
-  apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
-    ffmpeg \
-    git \
-    gnupg \
-    ripgrep
+  apt-get install -y --no-install-recommends ffmpeg
   rm -rf /var/lib/apt/lists/*
 }
 
-install_node() {
-  if command -v npm >/dev/null 2>&1; then
-    return
-  fi
-
-  curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | bash -
-  apt-get install -y --no-install-recommends nodejs
-  npm --version >/dev/null 2>&1 || fail "npm was not installed successfully"
-}
-
 install_ai_agent_switch() {
-  [[ -n "$AI_AGENT_SWITCH_VERSION" ]] || fail "AI_AGENT_SWITCH_VERSION is required"
-  install_node
-  if [[ -n "$AI_AGENT_SWITCH_SOURCE_URL" ]]; then
-    install_ai_agent_switch_from_source
-  else
-    install_ai_agent_switch_from_npm
-  fi
-  verify_ai_agent_switch_agent_hub
+  local version
+  local install_dir
+  install_dir="/opt/ai-agent-switch/bin"
+  version="$(
+    curl -fsSL "$AI_AGENT_SWITCH_LATEST_RELEASE_URL" \
+      | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+      | head -n 1
+  )"
+  [[ -n "$version" ]] || fail "failed to resolve latest ai-agent-switch release"
+
+  curl -fsSL "$AI_AGENT_SWITCH_INSTALL_URL" | sh -s -- "$version" --install-dir "$install_dir"
+  ln -sf "${install_dir}/ai-agent-switch" /usr/local/bin/ai-agent-switch
+  command -v ai-agent-switch >/dev/null 2>&1 || fail "ai-agent-switch was not installed"
 }
 
-install_ai_agent_switch_from_npm() {
-  local prefix="/opt/ai-agent-switch"
-  mkdir -p "$prefix"
-  npm install -g --prefix "$prefix" "ai-agent-switch@${AI_AGENT_SWITCH_VERSION}"
-  ln -sf "${prefix}/bin/ai-agent-switch" /usr/local/bin/ai-agent-switch
-}
-
-install_ai_agent_switch_from_source() {
-  local src_dir
-  local package_dir
-  local target
-  target="linux-$(uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/')"
-  src_dir="$(mktemp -d)"
-  git init "$src_dir"
-  (
-    cd "$src_dir"
-    git remote add origin "$AI_AGENT_SWITCH_SOURCE_URL"
-    git fetch --depth 1 origin "${AI_AGENT_SWITCH_SOURCE_REF:-HEAD}"
-    git checkout --detach FETCH_HEAD
-    npm install -g bun
-    bun install --frozen-lockfile
-    bun run npm:build-package -- --platform "$target" --out-dir dist/npm-packages --version "$AI_AGENT_SWITCH_VERSION"
-  )
-  package_dir="$src_dir/dist/npm-packages/ai-agent-switch-$target"
-  [[ -x "$package_dir/ai-agent-switch" ]] || fail "ai-agent-switch source binary was not built"
-  install -m 0755 "$package_dir/ai-agent-switch" /usr/local/bin/ai-agent-switch
-  rm -rf "$src_dir"
-}
-
-verify_ai_agent_switch_agent_hub() {
-  local verify_home
-  local output
-  verify_home="$(mktemp -d)"
-  output="$(
-    HOME="$verify_home" ai-agent-switch agent-hub init \
-      --client hermes \
-      --provider-id verify-aiproxy \
-      --provider-name Verify \
-      --model-type openai-chat-compatible \
-      --base-url http://127.0.0.1:1/v1 \
-      --api-key-env AIPROXY_API_KEY \
-      --model verify-model \
-      --available-model verify-model \
-      --json
-  )" || {
-    rm -rf "$verify_home"
-    fail "ai-agent-switch agent-hub init verification failed"
-  }
-  rm -rf "$verify_home"
-  printf '%s' "$output" | grep -F '"requiresConfirmation": true' >/dev/null || \
-    fail "ai-agent-switch agent-hub init did not return the expected dry-run JSON"
-}
-
-install_uv() {
-  if [[ -x "$UV_BIN" ]]; then
-    return
-  fi
-
-  log "installing uv"
-  curl -LsSf https://astral.sh/uv/install.sh | sh
-  [[ -x "$UV_BIN" ]] || fail "uv was not installed successfully"
-}
-
-checkout_hermes_source() {
+install_hermes() {
   rm -rf "$HERMES_SRC"
-  retry git -c http.version=HTTP/1.1 clone --branch "$HERMES_BRANCH" --single-branch "$HERMES_GIT_URL" "$HERMES_SRC"
-  git -C "$HERMES_SRC" checkout "$HERMES_REF"
-}
+  mkdir -p "$(dirname "$HERMES_SRC")" "$HERMES_HOME"
+  git clone --depth 1 "$HERMES_GIT_URL" "$HERMES_SRC"
 
-install_hermes_runtime() {
-  mkdir -p /opt/hermes /workspace "$HERMES_HOME" "$UV_PYTHON_INSTALL_DIR"
   cd "$HERMES_SRC"
-
-  UV_PYTHON_INSTALL_DIR="$UV_PYTHON_INSTALL_DIR" "$UV_BIN" venv "$HERMES_VENV" --python 3.11
-
-  if [[ -f "uv.lock" ]]; then
-    log "installing Hermes with uv.lock"
-    UV_PYTHON_INSTALL_DIR="$UV_PYTHON_INSTALL_DIR" UV_PROJECT_ENVIRONMENT="$HERMES_VENV" "$UV_BIN" sync --all-extras --locked || \
-      UV_PYTHON_INSTALL_DIR="$UV_PYTHON_INSTALL_DIR" UV_PROJECT_ENVIRONMENT="$HERMES_VENV" "$UV_BIN" pip install -e ".[all]" || \
-      UV_PYTHON_INSTALL_DIR="$UV_PYTHON_INSTALL_DIR" UV_PROJECT_ENVIRONMENT="$HERMES_VENV" "$UV_BIN" pip install -e "."
-  else
-    log "installing Hermes with uv pip"
-    UV_PYTHON_INSTALL_DIR="$UV_PYTHON_INSTALL_DIR" UV_PROJECT_ENVIRONMENT="$HERMES_VENV" "$UV_BIN" pip install -e ".[all]" || \
-      UV_PYTHON_INSTALL_DIR="$UV_PYTHON_INSTALL_DIR" UV_PROJECT_ENVIRONMENT="$HERMES_VENV" "$UV_BIN" pip install -e "."
-  fi
+  "$UV_BIN" venv "$HERMES_VENV" --python 3.11
+  "$UV_BIN" pip install --python "${HERMES_VENV}/bin/python" -e ".[all]"
+  [[ -x "${HERMES_VENV}/bin/hermes" ]] || fail "hermes was not installed"
 }
 
 write_default_config() {
-  mkdir -p "$HERMES_HOME" "$HERMES_DEFAULTS_DIR"
+  mkdir -p "$HERMES_DEFAULTS_DIR" "$HERMES_HOME"
 
-  cat >"${HERMES_DEFAULTS_DIR}/config.yaml" <<'CFG'
+  cat >"${HERMES_DEFAULTS_DIR}/config.yaml" <<'EOF'
 model:
   default: gpt-5.4
   provider: auto
@@ -181,37 +60,26 @@ display:
   skin: default
 terminal:
   backend: local
-CFG
+EOF
 
-  cat >"${HERMES_DEFAULTS_DIR}/.env" <<'ENVFILE'
-# Put Hermes provider credentials here, for example:
-# OPENAI_API_KEY=
-# OPENROUTER_API_KEY=
-# ANTHROPIC_API_KEY=
+  cat >"${HERMES_DEFAULTS_DIR}/.env" <<'EOF'
 API_SERVER_ENABLED=true
 API_SERVER_HOST=0.0.0.0
 API_SERVER_PORT=8642
-# API_SERVER_KEY is supplied by /opt/agent/bin/start unless overridden at runtime.
-ENVFILE
-  chmod 600 "${HERMES_DEFAULTS_DIR}/.env"
+EOF
 
-  if [[ ! -f "${HERMES_HOME}/config.yaml" ]]; then
-    cp "${HERMES_DEFAULTS_DIR}/config.yaml" "${HERMES_HOME}/config.yaml"
-  fi
-
-  if [[ ! -f "${HERMES_HOME}/.env" ]]; then
-    install -m 0600 "${HERMES_DEFAULTS_DIR}/.env" "${HERMES_HOME}/.env"
-  fi
+  install -m 0644 "${HERMES_DEFAULTS_DIR}/config.yaml" "${HERMES_HOME}/config.yaml"
+  install -m 0600 "${HERMES_DEFAULTS_DIR}/.env" "${HERMES_HOME}/.env"
 }
 
-install_agent_start() {
+write_start_script() {
   mkdir -p "${AGENT_HOME}/bin"
 
   cat >"${AGENT_HOME}/bin/start" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
-export HERMES_HOME="${HERMES_HOME:-${AGENT_DATA_DIR:-/home/agent/.hermes}}"
+export HERMES_HOME="${HERMES_HOME:-${AGENT_DATA_DIR:-/root/.hermes}}"
 export HERMES_VENV="${HERMES_VENV:-/opt/hermes/venv}"
 export HERMES_DEFAULT_CONFIG_FILE="${HERMES_DEFAULT_CONFIG_FILE:-/opt/agent/defaults/hermes/config.yaml}"
 export HERMES_DEFAULT_ENV_FILE="${HERMES_DEFAULT_ENV_FILE:-/opt/agent/defaults/hermes/.env}"
@@ -222,171 +90,21 @@ export API_SERVER_PORT="${API_SERVER_PORT:-${AGENT_PORT:-8642}}"
 
 mkdir -p "$HERMES_HOME" "${AGENT_WORKSPACE:-/workspace}"
 
-log() {
-  printf '[%s] [INFO] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"
-}
+if [[ ! -f "${HERMES_HOME}/config.yaml" ]]; then
+  install -m 0644 "$HERMES_DEFAULT_CONFIG_FILE" "${HERMES_HOME}/config.yaml"
+fi
 
-warn() {
-  printf '[%s] [WARN] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >&2
-}
-
-restore_default_file() {
-  local target="$1"
-  local default_file="$2"
-  local mode="$3"
-
-  if [[ -L "$target" && ! -e "$target" ]]; then
-    rm -f "$target"
-  fi
-
-  if [[ -f "$target" ]]; then
-    return 0
-  fi
-
-  if [[ ! -f "$default_file" ]]; then
-    printf '[ERROR] missing Hermes default config: %s\n' "$default_file" >&2
-    exit 1
-  fi
-
-  install -m "$mode" "$default_file" "$target"
-}
-
-agent_hub_model_type() {
-  local api_mode="${AGENT_MODEL_API_MODE:-}"
-  case "$api_mode" in
-    codex_responses|openai-responses|responses)
-      printf 'openai-responses'
-      ;;
-    anthropic_messages|anthropic)
-      printf 'anthropic'
-      ;;
-    chat_completions|openai_chat|openai-chat-compatible|"")
-      case "${AGENT_MODEL_PROVIDER:-}" in
-        custom:aiproxy-responses)
-          printf 'openai-responses'
-          ;;
-        custom:aiproxy-anthropic)
-          printf 'anthropic'
-          ;;
-        *)
-          printf 'openai-chat-compatible'
-          ;;
-      esac
-      ;;
-    image_generation)
-      printf 'openai-responses'
-      ;;
-    *)
-      printf 'openai-chat-compatible'
-      ;;
-  esac
-}
-
-agent_hub_provider_id() {
-  case "${AGENT_MODEL_PROVIDER:-}" in
-    custom:aiproxy-chat)
-      printf 'aiproxy-chat'
-      ;;
-    custom:aiproxy-responses)
-      printf 'aiproxy-responses'
-      ;;
-    custom:aiproxy-anthropic)
-      printf 'aiproxy-anthropic'
-      ;;
-    *)
-      printf '%s' "${AGENT_MODEL_PROVIDER:-agent-hub}" \
-        | tr '[:upper:]' '[:lower:]' \
-        | sed -E 's/^custom://; s/[^a-z0-9._-]+/-/g; s/^-+//; s/-+$//' \
-        | sed -E 's/^$/agent-hub/'
-      ;;
-  esac
-}
-
-agent_hub_provider_name() {
-  case "${AGENT_MODEL_PROVIDER:-}" in
-    custom:aiproxy-chat)
-      printf 'AI Proxy Chat Completions'
-      ;;
-    custom:aiproxy-responses)
-      printf 'AI Proxy Responses'
-      ;;
-    custom:aiproxy-anthropic)
-      printf 'AI Proxy Anthropic Messages'
-      ;;
-    *)
-      printf '%s' "$(agent_hub_provider_id)"
-      ;;
-  esac
-}
-
-sync_agent_hub_model_config() {
-  local provider="${AGENT_MODEL_PROVIDER:-}"
-  local base_url="${AGENT_MODEL_BASEURL:-}"
-  local model="${AGENT_MODEL:-}"
-  local api_key_env
-  local model_type
-  local provider_id
-  local provider_name
-  local output
-
-  if [[ -z "$provider" || -z "$base_url" || -z "$model" ]]; then
-    warn "skipping Agent Hub model sync because provider, base URL, or model is empty"
-    return 0
-  fi
-
-  if [[ "$provider" == custom:aiproxy-* ]]; then
-    export AIPROXY_API_KEY="${AIPROXY_API_KEY:-${AGENT_MODEL_APIKEY:-}}"
-    api_key_env="AIPROXY_API_KEY"
-  else
-    api_key_env="AGENT_MODEL_APIKEY"
-  fi
-
-  if [[ -z "${!api_key_env:-}" ]]; then
-    warn "skipping Agent Hub model sync because ${api_key_env} is empty"
-    return 0
-  fi
-
-  if ! command -v ai-agent-switch >/dev/null 2>&1; then
-    warn "skipping Agent Hub model sync because ai-agent-switch is not available"
-    return 0
-  fi
-
-  model_type="$(agent_hub_model_type)"
-  provider_id="$(agent_hub_provider_id)"
-  provider_name="$(agent_hub_provider_name)"
-
-  if output="$(
-    HOME="${HOME:-/home/agent}" ai-agent-switch agent-hub init \
-      --client hermes \
-      --provider-id "$provider_id" \
-      --provider-name "$provider_name" \
-      --model-type "$model_type" \
-      --base-url "$base_url" \
-      --api-key-env "$api_key_env" \
-      --model "$model" \
-      --available-model "${model}:${model_type}" \
-      -y \
-      --json 2>&1
-  )"; then
-    log "synced Agent Hub model config for Hermes: ${provider_id}/${model} (${model_type})"
-  else
-    warn "Agent Hub model sync failed: ${output}"
-  fi
-}
+if [[ ! -f "${HERMES_HOME}/.env" ]]; then
+  install -m 0600 "$HERMES_DEFAULT_ENV_FILE" "${HERMES_HOME}/.env"
+fi
 
 if [[ "$#" -eq 0 ]]; then
   : "${API_SERVER_KEY:?API_SERVER_KEY is required}"
-
-  restore_default_file "${HERMES_HOME}/config.yaml" "$HERMES_DEFAULT_CONFIG_FILE" 0644
-  restore_default_file "${HERMES_HOME}/.env" "$HERMES_DEFAULT_ENV_FILE" 0600
-
-  sync_agent_hub_model_config
-
   exec hermes gateway run
 fi
 
 case "$1" in
-  hermes|ai-agent-switch|node|npm|python|python3|bash|sh)
+  hermes|ai-agent-switch|python|python3|bash|sh)
     exec "$@"
     ;;
   *)
@@ -399,34 +117,20 @@ EOF
 }
 
 install_agent() {
-  prepare_install_env
   install_system_packages
-  install_uv
   install_ai_agent_switch
-  checkout_hermes_source
-  install_hermes_runtime
+  install_hermes
   write_default_config
-  install_agent_start
-
-  if [[ ! -x "${HERMES_VENV}/bin/hermes" ]]; then
-    fail "hermes binary was not installed"
-  fi
-
-  if [[ ! -x "${AGENT_HOME}/bin/start" ]]; then
-    fail "agent start file was not installed"
-  fi
+  write_start_script
 }
 
 main() {
-  local command="${1:-install}"
-  shift || true
-
-  case "$command" in
-    install|install-agent|agent)
-      install_agent "$@"
+  case "${1:-install}" in
+    install)
+      install_agent
       ;;
     *)
-      fail "unknown install command: ${command}"
+      fail "unknown install command: $1"
       ;;
   esac
 }

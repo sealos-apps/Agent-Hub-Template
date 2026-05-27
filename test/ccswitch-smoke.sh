@@ -9,9 +9,7 @@ HERMES_HOST_PORT="${HERMES_HOST_PORT:-$((28600 + RANDOM % 500))}"
 OPENCLAW_HOST_PORT="${OPENCLAW_HOST_PORT:-$((28700 + RANDOM % 500))}"
 DOCKER_PLATFORM="${DOCKER_PLATFORM:-linux/amd64}"
 BUILD_IMAGES="${BUILD_IMAGES:-1}"
-AGENT_BASE_IMAGE="${AGENT_BASE_IMAGE:-ghcr.io/gitlayzer/agent-devbox-base:0.1.0}"
-AI_AGENT_SWITCH_SOURCE_URL="${AI_AGENT_SWITCH_SOURCE_URL:-https://github.com/sealos-apps/ai-agent-switch.git}"
-AI_AGENT_SWITCH_SOURCE_REF="${AI_AGENT_SWITCH_SOURCE_REF:-9d78561ecbd35ce775f7acfe70e3bdb6617b9b51}"
+AGENT_BASE_IMAGE="${AGENT_BASE_IMAGE:-ghcr.io/nightwhite/agent-devbox-base}"
 CCSWITCH_DIRECT_BASE_URL="${CCSWITCH_DIRECT_BASE_URL:-http://127.0.0.1:15721/v1}"
 CCSWITCH_CONTAINER_BASE_URL="${CCSWITCH_CONTAINER_BASE_URL:-http://host.docker.internal:15721/v1}"
 CCSWITCH_API_KEY="${CCSWITCH_API_KEY:-sk-local-smoke}"
@@ -24,27 +22,6 @@ fail() {
   printf '[ERROR] %s\n' "$*" >&2
   exit 1
 }
-
-resolve_ai_agent_switch_version() {
-  if [[ -n "${AI_AGENT_SWITCH_VERSION:-}" ]]; then
-    printf '%s' "$AI_AGENT_SWITCH_VERSION"
-    return
-  fi
-
-  command -v npm >/dev/null 2>&1 || \
-    fail "AI_AGENT_SWITCH_VERSION is required when npm is not available"
-
-  npm view ai-agent-switch version || \
-    fail "failed to resolve AI_AGENT_SWITCH_VERSION from npm"
-}
-
-AI_AGENT_SWITCH_VERSION="$(resolve_ai_agent_switch_version)"
-if [[ -z "${AI_AGENT_SWITCH_METADATA:-}" ]]; then
-  AI_AGENT_SWITCH_METADATA="$AI_AGENT_SWITCH_VERSION"
-  if [[ -n "$AI_AGENT_SWITCH_SOURCE_REF" ]]; then
-    AI_AGENT_SWITCH_METADATA="${AI_AGENT_SWITCH_VERSION}+source.${AI_AGENT_SWITCH_SOURCE_REF}"
-  fi
-fi
 
 rewrite_proxy_for_docker() {
   local value="${1:-}"
@@ -183,32 +160,6 @@ if completed.returncode != 0:
 PY
 }
 
-verify_ai_agent_switch_image() {
-  local image="$1"
-  local client="$2"
-  local output
-  output="$(
-    docker run --rm --platform "$DOCKER_PLATFORM" -e "VERIFY_CLIENT=${client}" "$image" bash -lc '
-      set -euo pipefail
-      verify_home="$(mktemp -d)"
-      trap "rm -rf \"$verify_home\"" EXIT
-      HOME="$verify_home" ai-agent-switch agent-hub init \
-        --client "$VERIFY_CLIENT" \
-        --provider-id verify-aiproxy \
-        --provider-name Verify \
-        --model-type openai-chat-compatible \
-        --base-url http://127.0.0.1:1/v1 \
-        --api-key-env AIPROXY_API_KEY \
-        --model verify-model \
-        --available-model verify-model \
-        --json
-    '
-  )"
-  printf '%s' "$output" | grep -F '"requiresConfirmation": true' >/dev/null
-  docker image inspect "$image" --format '{{ index .Config.Labels "org.sealos.ai-agent-switch.version" }}' | grep -Fx "$AI_AGENT_SWITCH_VERSION" >/dev/null
-  docker image inspect "$image" --format '{{ index .Config.Labels "org.sealos.ai-agent-switch.metadata" }}' | grep -Fx "$AI_AGENT_SWITCH_METADATA" >/dev/null
-}
-
 docker_proxy_args=()
 for key in http_proxy https_proxy all_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY no_proxy NO_PROXY; do
   if [[ -n "${!key:-}" ]]; then
@@ -241,15 +192,11 @@ cleanup() {
 trap cleanup EXIT
 
 if [[ "$BUILD_IMAGES" == "1" ]]; then
-  printf '==> building Hermes and OpenClaw images (%s, ai-agent-switch %s)\n' "$DOCKER_PLATFORM" "$AI_AGENT_SWITCH_VERSION"
+  printf '==> building Hermes and OpenClaw images (%s)\n' "$DOCKER_PLATFORM"
   docker build \
     --platform "$DOCKER_PLATFORM" \
     --add-host host.docker.internal:host-gateway \
     --build-arg "AGENT_BASE_IMAGE=${AGENT_BASE_IMAGE}" \
-    --build-arg "AI_AGENT_SWITCH_VERSION=${AI_AGENT_SWITCH_VERSION}" \
-    --build-arg "AI_AGENT_SWITCH_METADATA=${AI_AGENT_SWITCH_METADATA}" \
-    --build-arg "AI_AGENT_SWITCH_SOURCE_URL=${AI_AGENT_SWITCH_SOURCE_URL}" \
-    --build-arg "AI_AGENT_SWITCH_SOURCE_REF=${AI_AGENT_SWITCH_SOURCE_REF}" \
     "${docker_proxy_args[@]+"${docker_proxy_args[@]}"}" \
     -f agents/hermes-agent/Dockerfile \
     -t "$HERMES_IMAGE" \
@@ -258,18 +205,11 @@ if [[ "$BUILD_IMAGES" == "1" ]]; then
     --platform "$DOCKER_PLATFORM" \
     --add-host host.docker.internal:host-gateway \
     --build-arg "AGENT_BASE_IMAGE=${AGENT_BASE_IMAGE}" \
-    --build-arg "AI_AGENT_SWITCH_VERSION=${AI_AGENT_SWITCH_VERSION}" \
-    --build-arg "AI_AGENT_SWITCH_METADATA=${AI_AGENT_SWITCH_METADATA}" \
-    --build-arg "AI_AGENT_SWITCH_SOURCE_URL=${AI_AGENT_SWITCH_SOURCE_URL}" \
-    --build-arg "AI_AGENT_SWITCH_SOURCE_REF=${AI_AGENT_SWITCH_SOURCE_REF}" \
     "${docker_proxy_args[@]+"${docker_proxy_args[@]}"}" \
     -f agents/openclaw/Dockerfile \
     -t "$OPENCLAW_IMAGE" \
     .
 fi
-
-verify_ai_agent_switch_image "$HERMES_IMAGE" hermes
-verify_ai_agent_switch_image "$OPENCLAW_IMAGE" openclaw
 
 printf '==> checking direct ccswitch chat completion\n'
 direct_output="$(mktemp)"
@@ -310,7 +250,7 @@ docker run -d \
   ' >/dev/null
 wait_for_hermes
 
-docker exec --user agent -e HOME=/home/agent "$HERMES_CONTAINER" ai-agent-switch client show hermes --json | python3 -c 'import json, sys; expected=sys.argv[1]; payload=json.load(sys.stdin); assert payload["providerId"] == "ccswitch", payload; assert payload["modelId"] == expected, payload' "$CCSWITCH_MODEL"
+docker exec -e HOME=/root "$HERMES_CONTAINER" ai-agent-switch client show hermes --json | python3 -c 'import json, sys; expected=sys.argv[1]; payload=json.load(sys.stdin); assert payload["providerId"] == "ccswitch", payload; assert payload["modelId"] == expected, payload' "$CCSWITCH_MODEL"
 hermes_output="$(mktemp)"
 curl --noproxy '*' -fsS --max-time 90 "http://127.0.0.1:${HERMES_HOST_PORT}/v1/chat/completions" \
   -H 'Content-Type: application/json' \
@@ -349,7 +289,7 @@ docker run -d \
   ' >/dev/null
 wait_for_openclaw
 
-docker exec --user agent -e HOME=/home/agent "$OPENCLAW_CONTAINER" ai-agent-switch client show openclaw --json | python3 -c 'import json, sys; expected=sys.argv[1]; payload=json.load(sys.stdin); assert payload["providerId"] == "ccswitch", payload; assert payload["modelId"] == expected, payload' "$CCSWITCH_MODEL"
+docker exec -e HOME=/root "$OPENCLAW_CONTAINER" ai-agent-switch client show openclaw --json | python3 -c 'import json, sys; expected=sys.argv[1]; payload=json.load(sys.stdin); assert payload["providerId"] == "ccswitch", payload; assert payload["modelId"] == expected, payload' "$CCSWITCH_MODEL"
 openclaw_output="$(mktemp)"
 run_openclaw_gateway_infer "$openclaw_output"
 assert_openclaw_gateway_text "$openclaw_output"

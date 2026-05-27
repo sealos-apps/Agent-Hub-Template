@@ -9,7 +9,7 @@ defaultArgs:
 backendSupported: true
 workingDir: /workspace
 manifestDir: manifests
-user: agent
+user: root
 presentation:
   logoKey: cowagent
   brandColor: "#7c3aed"
@@ -82,10 +82,6 @@ settings:
       options:
         - value: custom:aiproxy-chat
           label: AI-Proxy - Chat Completions
-        - value: custom:aiproxy-responses
-          label: AI-Proxy - Responses API
-        - value: custom:aiproxy-anthropic
-          label: AI-Proxy - Anthropic Messages
     - key: model
       label: Model
       type: select
@@ -121,25 +117,17 @@ regionModelTypes:
     - key: text
       label: 普通模型
       models:
-        - value: gpt-5.5
-          label: GPT-5.5
-          helper: OpenAI
-          provider: custom:aiproxy-responses
-          apiMode: codex_responses
-          capabilities: [reasoning, code]
+        - value: glm-5.1
+          label: GLM-5.1
+          helper: GLM
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
+          capabilities: [chat]
           inputModalities: [text]
           outputModalities: [text]
-        - value: claude-opus-4-7
-          label: Claude Opus 4.7
-          helper: Anthropic
-          provider: custom:aiproxy-anthropic
-          apiMode: anthropic_messages
-          capabilities: [reasoning, vision]
-          inputModalities: [text, image]
-          outputModalities: [text]
-        - value: glm-4.6
-          label: GLM-4.6
-          helper: GLM
+        - value: deepseek-v4-flash
+          label: DeepSeek V4 Flash
+          helper: DeepSeek
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           capabilities: [chat]

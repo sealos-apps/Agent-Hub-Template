@@ -34,7 +34,6 @@ test/
 - `build.env`
 - `install.sh`
 - `entrypoint.sh`
-- `index.json`
 - `template.yaml`
 - `manifests/devbox.yaml.tmpl`
 - `manifests/service.yaml.tmpl`
@@ -91,9 +90,9 @@ test/
 GitHub Actions 会根据 `registry/agents.yaml` 生成构建矩阵。
 
 - 分支 push、tag 和手动发布都会构建版本镜像：
-  - `ghcr.io/<owner>/<agent>:<index.json.version>`
+  - `ghcr.io/<owner>/<agent>:<template.yaml image tag>`
 
-发布成功后，Actions 会把 enabled agents 的 `index.json.image` 和 `agents/<agent>/template.yaml` 镜像引用同步为版本镜像。
+发布成功后，Actions 会把 enabled agents 的 `agents/<agent>/template.yaml` 镜像引用同步为版本镜像。
 
 ## Agent Hub 模板
 

@@ -7,15 +7,6 @@ on:
       - main
   pull_request:
   workflow_dispatch:
-    inputs:
-      ai_agent_switch_source_url:
-        description: Optional ai-agent-switch source repository URL.
-        required: false
-        default: ''
-      ai_agent_switch_source_ref:
-        description: Optional ai-agent-switch source ref. Required when source URL is set.
-        required: false
-        default: ''
 
 permissions:
   contents: read
@@ -31,56 +22,14 @@ jobs:
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
       count: ${{ steps.matrix.outputs.count }}
-      ai-agent-switch-version: ${{ steps.ai-agent-switch.outputs.version }}
-      ai-agent-switch-metadata: ${{ steps.ai-agent-switch.outputs.metadata }}
-      ai-agent-switch-source-url: ${{ steps.ai-agent-switch.outputs.source-url }}
-      ai-agent-switch-source-ref: ${{ steps.ai-agent-switch.outputs.source-ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Validate agent contracts
         run: bash test/validate-agent-contract.sh
-
-      - name: Resolve ai-agent-switch version
-        id: ai-agent-switch
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          SOURCE_URL_INPUT: ${{ github.event.inputs.ai_agent_switch_source_url || '' }}
-          SOURCE_REF_INPUT: ${{ github.event.inputs.ai_agent_switch_source_ref || '' }}
-        run: |
-          version="$(npm view ai-agent-switch version)"
-          if [ -z "$version" ]; then
-            echo "failed to resolve ai-agent-switch version" >&2
-            exit 1
-          fi
-          source_url="$SOURCE_URL_INPUT"
-          source_ref="$SOURCE_REF_INPUT"
-          if [ -z "$source_url" ] && [ -n "$source_ref" ]; then
-            source_url="https://github.com/sealos-apps/ai-agent-switch.git"
-          fi
-          if [ -z "$source_url" ] && [ -z "$source_ref" ] && { [ "$EVENT_NAME" = "pull_request" ] || [ "$EVENT_NAME" = "push" ] || [ "$EVENT_NAME" = "workflow_dispatch" ]; }; then
-            source_url="https://github.com/sealos-apps/ai-agent-switch.git"
-            source_ref="9d78561ecbd35ce775f7acfe70e3bdb6617b9b51"
-          fi
-          if [ -n "$source_url" ] && [ -z "$source_ref" ]; then
-            echo "ai-agent-switch source ref is required when source url is set" >&2
-            exit 1
-          fi
-          if [ -z "$source_url" ] && [ -n "$source_ref" ]; then
-            echo "ai-agent-switch source url is required when source ref is set" >&2
-            exit 1
-          fi
-          metadata="$version"
-          if [ -n "$source_ref" ]; then
-            metadata="${version}+source.${source_ref}"
-          fi
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "metadata=$metadata" >> "$GITHUB_OUTPUT"
-          echo "source-url=$source_url" >> "$GITHUB_OUTPUT"
-          echo "source-ref=$source_ref" >> "$GITHUB_OUTPUT"
 
       - name: Generate agent matrix
         id: matrix
@@ -213,7 +162,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: recursive
 
@@ -247,7 +196,7 @@ jobs:
       matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: recursive
 
@@ -271,55 +220,6 @@ jobs:
         run: |
           docker build \
             --build-arg "AGENT_BASE_IMAGE=${AGENT_BASE_IMAGE}" \
-            --build-arg "AI_AGENT_SWITCH_VERSION=${{ needs.prepare.outputs['ai-agent-switch-version'] }}" \
-            --build-arg "AI_AGENT_SWITCH_METADATA=${{ needs.prepare.outputs['ai-agent-switch-metadata'] }}" \
-            --build-arg "AI_AGENT_SWITCH_SOURCE_URL=${{ needs.prepare.outputs['ai-agent-switch-source-url'] }}" \
-            --build-arg "AI_AGENT_SWITCH_SOURCE_REF=${{ needs.prepare.outputs['ai-agent-switch-source-ref'] }}" \
             --file "${{ matrix.path }}/Dockerfile" \
             --tag "agent-hub/${{ matrix.name }}:ci-${{ github.run_id }}" \
             .
-
-      - name: Verify Agent Hub init command
-        run: |
-          image="agent-hub/${{ matrix.name }}:ci-${{ github.run_id }}"
-          expected="${{ needs.prepare.outputs['ai-agent-switch-version'] }}"
-          expected_metadata="${{ needs.prepare.outputs['ai-agent-switch-metadata'] }}"
-          case "${{ matrix.name }}" in
-            cowagent)
-              verify_client="cowagent"
-              verify_api_key_env="OPEN_AI_API_KEY"
-              ;;
-            hermes-agent)
-              verify_client="hermes"
-              verify_api_key_env="AIPROXY_API_KEY"
-              ;;
-            *)
-              verify_client="${{ matrix.name }}"
-              verify_api_key_env="AIPROXY_API_KEY"
-              ;;
-          esac
-          output="$(
-            docker run --rm \
-              -e "VERIFY_CLIENT=${verify_client}" \
-              -e "VERIFY_API_KEY_ENV=${verify_api_key_env}" \
-              "$image" bash -lc '
-              set -euo pipefail
-              verify_home="$(mktemp -d)"
-              trap "rm -rf \"$verify_home\"" EXIT
-              HOME="$verify_home" ai-agent-switch agent-hub init \
-                --client "$VERIFY_CLIENT" \
-                --provider-id verify-aiproxy \
-                --provider-name Verify \
-                --model-type openai-chat-compatible \
-                --base-url http://127.0.0.1:1/v1 \
-                --api-key-env "$VERIFY_API_KEY_ENV" \
-                --model verify-model \
-                --available-model verify-model \
-                --json
-            '
-          )"
-          printf '%s' "$output" | grep -F '"requiresConfirmation": true' >/dev/null
-          actual="$(docker image inspect "$image" --format '{{ index .Config.Labels "org.sealos.ai-agent-switch.version" }}')"
-          test "$actual" = "$expected"
-          actual_metadata="$(docker image inspect "$image" --format '{{ index .Config.Labels "org.sealos.ai-agent-switch.metadata" }}')"
-          test "$actual_metadata" = "$expected_metadata"

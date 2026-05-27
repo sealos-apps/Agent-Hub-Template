@@ -10,7 +10,6 @@ Each agent directory must contain:
 - `build.env`
 - `install.sh`
 - `entrypoint.sh`
-- `index.json`
 - `template.yaml`
 - `README.md`
 - `manifests/devbox.yaml.tmpl`
@@ -40,7 +39,7 @@ Each agent directory must not contain:
 The Dockerfile must:
 
 - define `ARG BASE_PLATFORM=linux/amd64`
-- define `ARG AGENT_BASE_IMAGE=ghcr.io/gitlayzer/agent-devbox-base:0.1.0`
+- define `ARG AGENT_BASE_IMAGE=ghcr.io/nightwhite/agent-devbox-base`
 - use `FROM --platform=${BASE_PLATFORM} ${AGENT_BASE_IMAGE}`
 - preserve `ENTRYPOINT ["/init", "/opt/agent/entrypoint.sh"]`
 - use `CMD ["start"]`
@@ -48,16 +47,8 @@ The Dockerfile must:
 - run `install.sh` during image build
 
 The shared base image is built from `base/` and carries the Devbox runtime
-contract: `/init`, s6 services, SSH support, `devbox` and `agent` users,
+contract: `/init`, s6 services, SSH support, the `devbox` user,
 `/workspace`, Node.js 22, Python tooling, `uv`, and common agent utilities.
-
-## Metadata Contract
-
-Each non-template `index.json` must include:
-
-- `ai_agent_switch_version`: the `ai-agent-switch` version or source-ref
-  identifier used when the image was built. Release automation syncs this field
-  from the resolved build metadata.
 
 ## Runtime Contract
 
@@ -125,8 +116,8 @@ Required metadata includes:
 - `settings`
 - `regionModelPresets`
 
-The template image must match `agents/<agent>/index.json.image`. Release
-automation keeps both files synchronized after version image publishing.
+`template.yaml` is the single metadata source consumed by Agent Hub. Release
+automation updates its `image` field after version image publishing.
 
 `template.yaml` is the metadata source for local manifests:
 

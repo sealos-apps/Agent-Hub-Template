@@ -6,35 +6,12 @@ CONTAINER="${CONTAINER:-openclaw-smoke-$RANDOM}"
 HOST_PORT="${HOST_PORT:-28789}"
 DOCKER_PLATFORM="${DOCKER_PLATFORM:-linux/amd64}"
 OPENCLAW_GATEWAY_TOKEN="${OPENCLAW_GATEWAY_TOKEN:-sk-openclaw-smoke-local-token}"
-AGENT_BASE_IMAGE="${AGENT_BASE_IMAGE:-ghcr.io/gitlayzer/agent-devbox-base:0.1.0}"
-AI_AGENT_SWITCH_SOURCE_URL="${AI_AGENT_SWITCH_SOURCE_URL:-https://github.com/sealos-apps/ai-agent-switch.git}"
-AI_AGENT_SWITCH_SOURCE_REF="${AI_AGENT_SWITCH_SOURCE_REF:-9d78561ecbd35ce775f7acfe70e3bdb6617b9b51}"
+AGENT_BASE_IMAGE="${AGENT_BASE_IMAGE:-ghcr.io/nightwhite/agent-devbox-base}"
 
 fail() {
   printf '[ERROR] %s\n' "$*" >&2
   exit 1
 }
-
-resolve_ai_agent_switch_version() {
-  if [[ -n "${AI_AGENT_SWITCH_VERSION:-}" ]]; then
-    printf '%s' "$AI_AGENT_SWITCH_VERSION"
-    return
-  fi
-
-  command -v npm >/dev/null 2>&1 || \
-    fail "AI_AGENT_SWITCH_VERSION is required when npm is not available"
-
-  npm view ai-agent-switch version || \
-    fail "failed to resolve AI_AGENT_SWITCH_VERSION from npm"
-}
-
-AI_AGENT_SWITCH_VERSION="$(resolve_ai_agent_switch_version)"
-if [[ -z "${AI_AGENT_SWITCH_METADATA:-}" ]]; then
-  AI_AGENT_SWITCH_METADATA="$AI_AGENT_SWITCH_VERSION"
-  if [[ -n "$AI_AGENT_SWITCH_SOURCE_REF" ]]; then
-    AI_AGENT_SWITCH_METADATA="${AI_AGENT_SWITCH_VERSION}+source.${AI_AGENT_SWITCH_SOURCE_REF}"
-  fi
-fi
 
 rewrite_proxy_for_docker() {
   local value="${1:-}"
@@ -80,45 +57,15 @@ cleanup() {
 }
 trap cleanup EXIT
 
-verify_ai_agent_switch_agent_hub() {
-  local output
-  output="$(
-    docker run --rm --platform "$DOCKER_PLATFORM" "$IMAGE" bash -lc '
-      set -euo pipefail
-      verify_home="$(mktemp -d)"
-      trap "rm -rf \"$verify_home\"" EXIT
-      HOME="$verify_home" ai-agent-switch agent-hub init \
-        --client openclaw \
-        --provider-id verify-aiproxy \
-        --provider-name Verify \
-        --model-type openai-chat-compatible \
-        --base-url http://127.0.0.1:1/v1 \
-        --api-key-env AIPROXY_API_KEY \
-        --model verify-model \
-        --available-model verify-model \
-        --json
-    '
-  )"
-  printf '%s' "$output" | grep -F '"requiresConfirmation": true' >/dev/null
-  docker image inspect "$IMAGE" --format '{{ index .Config.Labels "org.sealos.ai-agent-switch.version" }}' | grep -Fx "$AI_AGENT_SWITCH_VERSION" >/dev/null
-  docker image inspect "$IMAGE" --format '{{ index .Config.Labels "org.sealos.ai-agent-switch.metadata" }}' | grep -Fx "$AI_AGENT_SWITCH_METADATA" >/dev/null
-}
-
-printf '==> building %s (%s, ai-agent-switch %s)\n' "$IMAGE" "$DOCKER_PLATFORM" "$AI_AGENT_SWITCH_VERSION"
+printf '==> building %s (%s)\n' "$IMAGE" "$DOCKER_PLATFORM"
 docker build \
   --platform "$DOCKER_PLATFORM" \
   --add-host host.docker.internal:host-gateway \
   --build-arg "AGENT_BASE_IMAGE=${AGENT_BASE_IMAGE}" \
-  --build-arg "AI_AGENT_SWITCH_VERSION=${AI_AGENT_SWITCH_VERSION}" \
-  --build-arg "AI_AGENT_SWITCH_METADATA=${AI_AGENT_SWITCH_METADATA}" \
-  --build-arg "AI_AGENT_SWITCH_SOURCE_URL=${AI_AGENT_SWITCH_SOURCE_URL}" \
-  --build-arg "AI_AGENT_SWITCH_SOURCE_REF=${AI_AGENT_SWITCH_SOURCE_REF}" \
   "${docker_proxy_args[@]+"${docker_proxy_args[@]}"}" \
   -f agents/openclaw/Dockerfile \
   -t "$IMAGE" \
   .
-
-verify_ai_agent_switch_agent_hub
 
 printf '==> starting %s\n' "$CONTAINER"
 docker run -d \
@@ -142,7 +89,7 @@ done
 [[ "$ready" -eq 1 ]] || fail "OpenClaw readiness endpoint did not become ready"
 
 printf '==> applying Agent Hub model through ai-agent-switch\n'
-docker exec --user agent -e HOME=/home/agent "$CONTAINER" ai-agent-switch agent-hub init \
+docker exec -e HOME=/root "$CONTAINER" ai-agent-switch agent-hub init \
   --client openclaw \
   --provider-id aiproxy \
   --provider-name "AI Proxy" \
@@ -154,10 +101,9 @@ docker exec --user agent -e HOME=/home/agent "$CONTAINER" ai-agent-switch agent-
   -y \
   --json | python3 -c 'import json, sys; payload=json.load(sys.stdin); assert payload["applied"] is True, payload'
 
-docker exec --user agent -e HOME=/home/agent "$CONTAINER" ai-agent-switch client show openclaw --json | python3 -c 'import json, sys; payload=json.load(sys.stdin); assert payload["providerId"] == "aiproxy", payload; assert payload["modelId"] == "glm-4.6", payload'
-docker exec "$CONTAINER" sh -lc 'grep -q "\"primary\": \"aiproxy/glm-4.6\"" /home/agent/.openclaw/openclaw.json'
-docker exec "$CONTAINER" sh -lc 'grep -q "^OPENCLAW_GATEWAY_TOKEN=sk-openclaw-smoke-local-token$" /home/agent/.openclaw/.env'
-docker exec "$CONTAINER" node -e 'const fs=require("fs"); const cfg=JSON.parse(fs.readFileSync("/home/agent/.openclaw/openclaw.json","utf8")); if (cfg.gateway?.auth?.token !== process.env.OPENCLAW_GATEWAY_TOKEN) throw new Error(`gateway token mismatch: ${cfg.gateway?.auth?.token}`);'
-docker exec "$CONTAINER" node -e 'const fs=require("fs"); const cfg=JSON.parse(fs.readFileSync("/home/agent/.openclaw/openclaw.json","utf8")); if (cfg.gateway?.controlUi?.dangerouslyDisableDeviceAuth !== true) throw new Error("control UI device auth is not disabled");'
+docker exec -e HOME=/root "$CONTAINER" ai-agent-switch client show openclaw --json | python3 -c 'import json, sys; payload=json.load(sys.stdin); assert payload["providerId"] == "aiproxy", payload; assert payload["modelId"] == "glm-4.6", payload'
+docker exec "$CONTAINER" sh -lc 'grep -q "\"primary\": \"aiproxy/glm-4.6\"" /root/.openclaw/openclaw.json'
+docker exec "$CONTAINER" sh -lc 'grep -q "^OPENCLAW_GATEWAY_TOKEN=sk-openclaw-smoke-local-token$" /root/.openclaw/.env'
+docker exec "$CONTAINER" node -e 'const fs=require("fs"); const cfg=JSON.parse(fs.readFileSync("/root/.openclaw/openclaw.json","utf8")); if (cfg.gateway?.auth?.token !== process.env.OPENCLAW_GATEWAY_TOKEN) throw new Error("gateway token is not configured"); if (cfg.gateway?.controlUi?.dangerouslyDisableDeviceAuth !== true) throw new Error("control UI device auth is not disabled");'
 
 printf '==> OpenClaw smoke passed\n'

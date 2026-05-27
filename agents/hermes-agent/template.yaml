@@ -9,7 +9,7 @@ defaultArgs:
 backendSupported: true
 workingDir: /workspace
 manifestDir: manifests
-user: agent
+user: root
 presentation:
   logoKey: hermes-agent
   brandColor: "#2563eb"

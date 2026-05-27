@@ -21,15 +21,12 @@ This agent follows the shared Agent Hub runtime contract:
 ## Build contents
 
 - `Dockerfile`: builds the runtime image from the shared Agent Hub Devbox base
-- `build.env`: pins upstream source and build-time options
+- `build.env`: stores the upstream source URL and install paths
 - `install.sh`: installs CowAgent from upstream source and writes `/opt/agent/bin/start`
 - `entrypoint.sh`: shared Agent Hub command router
-- `index.json`: Agent Hub display metadata
 - `template.yaml` and `manifests/`: Agent Hub deployment template
 
-The pinned upstream source ref is `master`.
-
-Agent Hub master image: `ghcr.io/gitlayzer/cowagent:master`.
+Agent Hub master image: `ghcr.io/nightwhite/cowagent:master`.
 
 ## Startup behavior
 
@@ -73,40 +70,34 @@ docker run --rm -p 127.0.0.1:9899:9899 \
   agent-hub/cowagent:dev
 ```
 
-The startup script also maps common OpenAI names:
-
-- `OPENAI_API_KEY` -> `OPEN_AI_API_KEY`
-- `OPENAI_BASE_URL` -> `OPEN_AI_API_BASE`
-
 Use a persistent data directory:
 
 ```bash
 docker run --rm -p 127.0.0.1:9899:9899 \
-  -v "$(pwd)/.cowagent:/home/agent/.cowagent" \
+  -v "$(pwd)/.cowagent:/root/.cowagent" \
   -v "$(pwd)/workspace:/workspace" \
   agent-hub/cowagent:dev
 ```
 
-On first start, `/home/agent/.cowagent/config.json` is created from the baked
+On first start, `/root/.cowagent/config.json` is created from the baked
 default template. CowAgent still supports overriding config values by
 environment variables.
 
-## Build options
+## Build Inputs
 
 `build.env` supports:
 
-- `COWAGENT_REF`: upstream git tag or branch, currently `master`
-- `COWAGENT_INSTALL_OPTIONAL`: install optional parsing/voice packages, default `true`
-- `COWAGENT_INSTALL_AGENTMESH`: install `agentmesh-sdk` for CowAgent's agent plugin, default `true`
-- `COWAGENT_INSTALL_BROWSER`: install Playwright browser support, default `false`
-- `COWAGENT_USE_CN_MIRROR`: use China mirrors for apt and pip, default `false`
+- `COWAGENT_GIT_URL`: upstream repository URL
+- `COWAGENT_SRC`: source checkout path
+- `COWAGENT_VENV`: Python virtualenv path
+- `COWAGENT_HOME`: runtime data path
 
 Example:
 
 ```bash
 docker build \
   --build-arg BASE_PLATFORM=linux/amd64 \
-  --build-arg AGENT_BASE_IMAGE=ghcr.io/gitlayzer/agent-devbox-base:0.1.0 \
+  --build-arg AGENT_BASE_IMAGE=ghcr.io/nightwhite/agent-devbox-base \
   -f agents/cowagent/Dockerfile \
   -t agent-hub/cowagent:dev .
 ```

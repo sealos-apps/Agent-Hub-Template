@@ -20,7 +20,6 @@ docker run --rm --platform "$DOCKER_PLATFORM" --entrypoint /bin/bash "$IMAGE" -l
   set -euo pipefail
   test -x /init
   id devbox >/dev/null
-  id agent >/dev/null
   test -d /home/devbox/project
   test -d /workspace
   test -w /workspace
@@ -44,7 +43,7 @@ docker run --rm --platform "$DOCKER_PLATFORM" --entrypoint /bin/bash "$IMAGE" -l
   test -f /etc/s6-overlay/s6-rc.d/sdk-server/run
   test -f /etc/s6-overlay-hook/pre-rc-init.d/pre-rc-init.sh
   node -e "process.exit(process.versions.node.split(\".\")[0] === \"22\" ? 0 : 1)"
-  runuser -u agent -- bash -lc "test -w /workspace && touch /workspace/.agent-write && rm /workspace/.agent-write"
+  touch /workspace/.root-write && rm /workspace/.root-write
   runuser -u devbox -- bash -lc "test -w /home/devbox/project && touch /home/devbox/project/.devbox-write && rm /home/devbox/project/.devbox-write"
 '
 

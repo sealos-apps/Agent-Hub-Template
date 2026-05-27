@@ -39,8 +39,7 @@ base 镜像只包含 3 类能力。
 - crond / supercronic；
 - devbox-sdk-server；
 - `devbox` 用户；
-- `agent` 用户；
-- `/workspace`，且 `agent` 用户可写；
+- `/workspace`，且 root 运行时可写；
 - Devbox 运行所需的 service 配置、登录配置、logrotate 配置和 locale 配置。
 
 ### 语言与搜索工具
@@ -138,11 +137,12 @@ Agent 镜像安装失败时应直接构建失败，不添加未确认的 fallbac
 镜像构建与运行：
 
 - `Dockerfile`；
+- `build.env`；
 - `install.sh`；
 - `entrypoint.sh`；
 - `README.md`。
 
-`index.json` 和 `build.env` 不再作为 agent 目录契约的一部分。版本、镜像 tag、catalog 元数据和构建参数不应要求每个 agent 维护重复文件。
+`index.json` 不再作为 agent 目录契约的一部分。Agent Hub 读取的 catalog 元数据和镜像引用统一放在 `template.yaml`。`build.env` 本轮仍保留，用于承载非敏感构建常量。
 
 ## 验证标准
 
@@ -150,8 +150,7 @@ base 镜像 smoke 测试需要验证：
 
 - `/init` 可执行；
 - `devbox` 用户存在；
-- `agent` 用户存在；
-- `/workspace` 存在且 `agent` 用户可写；
+- `/workspace` 存在且 root 运行时可写；
 - `sshd` 可用；
 - devbox-sdk-server 可用；
 - s6 service 配置存在；
@@ -175,8 +174,7 @@ agent 镜像 smoke 测试需要验证：
 ## 后续实现顺序
 
 1. 调整 base 镜像包清单和 smoke 测试。
-2. 删除 agent 目录中的 `build.env` 契约，把必要常量合并到对应 `install.sh`。
-3. 删除 agent 目录中的 `index.json` 契约，让 `template.yaml` 成为唯一 Agent Hub 元数据来源。
-4. 简化 agent Dockerfile，只保留 base、agent 安装、`ai-agent-switch` 安装和入口复制。
-5. 更新 CI，使其不再读取或回写 `index.json`。
-6. 更新文档和契约测试。
+2. 删除 agent 目录中的 `index.json` 契约，让 `template.yaml` 成为唯一 Agent Hub 元数据来源。
+3. 简化 agent Dockerfile，只保留 base、agent 安装、`ai-agent-switch` 安装和入口复制。
+4. 更新 CI，使其不再读取或回写 `index.json`。
+5. 更新文档和契约测试。

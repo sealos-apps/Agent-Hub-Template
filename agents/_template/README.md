@@ -18,7 +18,6 @@ This directory is the minimal scaffold for adding an Agent Hub runtime image.
 - `build.env`: stores non-sensitive build-time defaults
 - `install.sh`: installs the upstream runtime and writes `/opt/agent/bin/start`
 - `entrypoint.sh`: shared command router
-- `index.json`: Agent Hub metadata
 - `template.yaml`: Agent Hub catalog metadata and settings schema
 - `manifests/devbox.yaml.tmpl`: Agent Hub Devbox template
 - `manifests/service.yaml.tmpl`: Agent Hub Service template

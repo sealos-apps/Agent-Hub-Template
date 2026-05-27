@@ -41,11 +41,11 @@ spec:
       - name: "AGENT_WORKSPACE"
         value: {{ quote .Agent.WorkingDir }}
       - name: "AGENT_DATA_DIR"
-        value: "/home/agent/.hermes"
+        value: "/root/.hermes"
       - name: "AGENT_PORT"
         value: "8642"
       - name: "HERMES_HOME"
-        value: "/home/agent/.hermes"
+        value: "/root/.hermes"
       - name: "API_SERVER_KEY"
         value: {{ quote .Agent.APIServerKey }}
       - name: "API_SERVER_ENABLED"

@@ -2,7 +2,6 @@
 set -euo pipefail
 
 DEFAULT_DEVBOX_USER="${DEFAULT_DEVBOX_USER:-devbox}"
-AGENT_USER="${AGENT_USER:-agent}"
 NODE_MAJOR="${NODE_MAJOR:-22}"
 PYTHON_MAJOR_MINOR="${PYTHON_MAJOR_MINOR:-3.11}"
 UV_VERSION="${UV_VERSION:-0.5.29}"
@@ -47,17 +46,9 @@ install_devbox_runtime() {
   chmod 0644 /usr/share/devbox/docs/README.s6-user-guide*.md
 }
 
-install_agent_user() {
-  log "creating agent runtime user"
-  if ! getent group "${AGENT_USER}" >/dev/null 2>&1; then
-    groupadd --gid 10001 "${AGENT_USER}"
-  fi
-  if ! id -u "${AGENT_USER}" >/dev/null 2>&1; then
-    useradd --uid 10001 --gid 10001 --create-home --shell /bin/bash "${AGENT_USER}"
-  fi
-
-  mkdir -p /opt/agent /workspace "/home/${AGENT_USER}" "/home/${DEFAULT_DEVBOX_USER}/project" "/home/${DEFAULT_DEVBOX_USER}/workspace"
-  chown -R "${AGENT_USER}:${AGENT_USER}" /opt/agent /workspace "/home/${AGENT_USER}"
+prepare_agent_paths() {
+  log "preparing root agent runtime paths"
+  mkdir -p /opt/agent /workspace "/home/${DEFAULT_DEVBOX_USER}/project" "/home/${DEFAULT_DEVBOX_USER}/workspace"
   chown -R "${DEFAULT_DEVBOX_USER}:${DEFAULT_DEVBOX_USER}" "/home/${DEFAULT_DEVBOX_USER}/project" "/home/${DEFAULT_DEVBOX_USER}/workspace"
   chmod 0775 /workspace
 }
@@ -72,7 +63,7 @@ install_node_runtime() {
     npm config set --global registry https://registry.npmmirror.com/
     printf '%s\n' 'registry=https://registry.npmmirror.com/' >/etc/npmrc
     printf '%s\n' 'registry=https://registry.npmmirror.com/' >/root/.npmrc
-    for user in "${DEFAULT_DEVBOX_USER}" "${AGENT_USER}"; do
+    for user in "${DEFAULT_DEVBOX_USER}"; do
       local home_dir
       home_dir="$(getent passwd "$user" | cut -d: -f6)"
       printf '%s\n' 'registry=https://registry.npmmirror.com/' >"${home_dir}/.npmrc"
@@ -167,7 +158,6 @@ verify_base() {
   log "verifying base image contract"
   test -x /init
   id "${DEFAULT_DEVBOX_USER}" >/dev/null
-  id "${AGENT_USER}" >/dev/null
   command -v node >/dev/null
   command -v npm >/dev/null
   command -v python3 >/dev/null
@@ -194,7 +184,7 @@ main() {
   export ARCH="${ARCH:-$(dpkg --print-architecture 2>/dev/null || uname -m)}"
 
   install_devbox_runtime
-  install_agent_user
+  prepare_agent_paths
   install_node_runtime
   install_python_runtime
   install_uv

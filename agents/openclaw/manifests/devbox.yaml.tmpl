@@ -41,23 +41,17 @@ spec:
       - name: "AGENT_WORKSPACE"
         value: {{ quote .Agent.WorkingDir }}
       - name: "AGENT_DATA_DIR"
-        value: "/home/agent/.openclaw"
+        value: "/root/.openclaw"
       - name: "AGENT_PORT"
         value: "18789"
       - name: "OPENCLAW_STATE_DIR"
-        value: "/home/agent/.openclaw"
+        value: "/root/.openclaw"
       - name: "OPENCLAW_CONFIG_PATH"
-        value: "/home/agent/.openclaw/openclaw.json"
+        value: "/root/.openclaw/openclaw.json"
       - name: "OPENCLAW_WORKSPACE"
         value: {{ quote .Agent.WorkingDir }}
       - name: "OPENCLAW_GATEWAY_TOKEN"
         value: {{ quote .Agent.APIServerKey }}
-      - name: "OPENCLAW_PUBLIC_ORIGIN"
-        value: {{ quote .IngressDomain }}
-      - name: "OPENCLAW_CONTROL_UI_ALLOWED_ORIGINS"
-        value: {{ quote .IngressDomain }}
-      - name: "OPENCLAW_CONTROL_UI_ALLOW_HOST_HEADER_ORIGIN_FALLBACK"
-        value: "true"
       - name: "OPENCLAW_CONTROL_UI_DISABLE_DEVICE_AUTH"
         value: "true"
       - name: "AGENT_MODEL_PROVIDER"
