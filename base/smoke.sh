@@ -26,12 +26,18 @@ docker run --rm --platform "$DOCKER_PLATFORM" --entrypoint /bin/bash "$IMAGE" -l
   test -w /workspace
   command -v node >/dev/null
   command -v npm >/dev/null
-  command -v yarn >/dev/null
-  command -v pnpm >/dev/null
   command -v python3 >/dev/null
   command -v pip3 >/dev/null
+  python3 -m venv /tmp/base-venv-check
+  rm -rf /tmp/base-venv-check
   command -v uv >/dev/null
-  command -v sshd >/dev/null
+  command -v rg >/dev/null
+  for tool in bash busybox curl wget git file less openssl tar gzip xz zip unzip rsync ssh sshd locale logrotate ps ip ping lsof getent find grep sed gawk; do
+    if ! command -v "$tool" >/dev/null; then
+      echo "required tool is missing: $tool" >&2
+      exit 1
+    fi
+  done
   test -x /usr/sbin/devbox-sdk-server
   test -f /etc/s6-overlay/s6-rc.d/startup/run
   test -f /etc/s6-overlay/s6-rc.d/sshd/run

@@ -66,7 +66,6 @@ install_node_runtime() {
   log "installing Node.js ${NODE_MAJOR}"
   curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | bash -
   apt-get install -y --no-install-recommends nodejs
-  npm install -g typescript yarn pnpm
   npm cache clean --force
 
   if [[ "${L10N}" == "zh_CN" ]]; then
@@ -86,17 +85,6 @@ install_python_runtime() {
   log "installing Python ${PYTHON_MAJOR_MINOR} tooling"
   apt-get update
   apt-get install -y --no-install-recommends \
-    build-essential \
-    libbz2-dev \
-    libc6-dev \
-    libffi-dev \
-    libgdbm-dev \
-    libncursesw5-dev \
-    libreadline-dev \
-    libsqlite3-dev \
-    libssl-dev \
-    tk-dev \
-    zlib1g-dev \
     python3 \
     python3-pip \
     python3-venv
@@ -147,13 +135,25 @@ install_uv() {
 }
 
 install_common_agent_packages() {
-  log "installing common agent packages"
+  log "installing minimal common tools"
   apt-get update
   apt-get install -y --no-install-recommends \
-    espeak \
-    ffmpeg \
-    libavcodec-extra \
+    file \
+    less \
+    zip \
+    unzip \
+    netbase \
+    gawk \
+    findutils \
+    grep \
+    sed \
+    tar \
+    gzip \
     ripgrep
+  # Devbox runtime installs these, but they are intentionally outside the minimal base.
+  apt-get purge -y jq vim
+  apt-get clean
+  rm -rf /var/lib/apt/lists/*
 }
 
 cleanup_image() {
@@ -170,12 +170,18 @@ verify_base() {
   id "${AGENT_USER}" >/dev/null
   command -v node >/dev/null
   command -v npm >/dev/null
-  command -v yarn >/dev/null
-  command -v pnpm >/dev/null
   command -v python3 >/dev/null
   command -v pip3 >/dev/null
+  python3 -m venv /tmp/base-venv-check
+  rm -rf /tmp/base-venv-check
   command -v uv >/dev/null
-  command -v sshd >/dev/null
+  command -v rg >/dev/null
+  for tool in bash busybox curl wget git file less openssl tar gzip xz zip unzip rsync ssh sshd locale logrotate ps ip ping lsof getent find grep sed gawk; do
+    if ! command -v "$tool" >/dev/null; then
+      log "required tool is missing: $tool"
+      exit 1
+    fi
+  done
   test -x /usr/sbin/devbox-sdk-server
   test -f /etc/s6-overlay/s6-rc.d/startup/run
   test -f /etc/s6-overlay/s6-rc.d/sdk-server/run
