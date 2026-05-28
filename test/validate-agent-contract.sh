@@ -95,6 +95,29 @@ PY
   fail "python3 with PyYAML or ruby is required to validate YAML: $file"
 }
 
+read_expected_image_owner() {
+  if [[ -n "${GITHUB_REPOSITORY_OWNER:-}" ]]; then
+    printf '%s\n' "${GITHUB_REPOSITORY_OWNER,,}"
+    return
+  fi
+
+  local origin_url
+  origin_url="$(git remote get-url origin 2>/dev/null || true)"
+  case "$origin_url" in
+    https://github.com/*/*)
+      origin_url="${origin_url#https://github.com/}"
+      printf '%s\n' "${origin_url%%/*}" | tr '[:upper:]' '[:lower:]'
+      ;;
+    git@github.com:*/*)
+      origin_url="${origin_url#git@github.com:}"
+      printf '%s\n' "${origin_url%%/*}" | tr '[:upper:]' '[:lower:]'
+      ;;
+    *)
+      fail "GITHUB_REPOSITORY_OWNER or a GitHub origin remote is required to validate template image owners"
+      ;;
+  esac
+}
+
 validate_dockerfile_contract() {
   local agent_dir="$1"
   local file="$agent_dir/Dockerfile"
@@ -124,6 +147,9 @@ validate_dockerfile_contract() {
 validate_template_metadata() {
   local template_dir="$1"
   local template_json
+  local expected_owner
+
+  expected_owner="$(read_expected_image_owner)"
 
   if python3 -c 'import yaml' >/dev/null 2>&1; then
     template_json="$(python3 - "$template_dir/template.yaml" <<'PY'
@@ -141,7 +167,7 @@ PY
     fail "python3 with PyYAML or ruby is required to validate Agent Hub template metadata"
   fi
 
-  TEMPLATE_JSON="$template_json" python3 - "$template_dir/template.yaml" <<'PY'
+  EXPECTED_IMAGE_OWNER="$expected_owner" TEMPLATE_JSON="$template_json" python3 - "$template_dir/template.yaml" <<'PY'
 import json
 import os
 import sys
@@ -176,6 +202,12 @@ if template.get("defaultArgs") != ["start"]:
     raise SystemExit(f'{template_path}: defaultArgs must be ["start"]')
 if template.get("user") != "root":
     raise SystemExit(f'{template_path}: user must be "root"')
+agent_id = str(template.get("id") or "").strip()
+image = str(template.get("image") or "").strip()
+expected_owner = os.environ["EXPECTED_IMAGE_OWNER"]
+expected_image = f"ghcr.io/{expected_owner}/{agent_id}:latest"
+if image != expected_image:
+    raise SystemExit(f"{template_path}: image must be {expected_image}")
 if not isinstance(template.get("port"), int) or template["port"] <= 0:
     raise SystemExit(f"{template_path}: port must be a positive integer")
 for legacy in ("bootstrap", "healthcheck"):
@@ -398,10 +430,14 @@ validate_workflow_contracts() {
     fail "base/Dockerfile must copy devbox-runtime tooling scripts"
   grep -F 'COPY devbox-runtime/tooling/docs' base/Dockerfile >/dev/null || \
     fail "base/Dockerfile must copy devbox-runtime tooling docs"
-  grep -F 'image_tag = image.rpartition(":")' .github/workflows/release.yml >/dev/null || \
-    fail ".github/workflows/release.yml must derive image tags from template.yaml"
-  grep -F 'tag = str(item["image_tag"])' .github/workflows/release.yml >/dev/null || \
-    fail ".github/workflows/release.yml sync step must use template image tags"
+  grep -F 'echo "latest"' .github/workflows/release.yml >/dev/null || \
+    fail ".github/workflows/release.yml must publish the latest agent image tag"
+  grep -F 'trace_tag="build-$(date -u +%Y%m%d)-${short_sha}"' .github/workflows/release.yml >/dev/null || \
+    fail ".github/workflows/release.yml must publish traceable build image tags"
+  grep -F 'image = f"ghcr.io/{owner}/{name}:latest"' .github/workflows/release.yml >/dev/null || \
+    fail ".github/workflows/release.yml sync step must keep template images on latest"
+  grep -F 'sync-latest-templates:' .github/workflows/release.yml >/dev/null || \
+    fail ".github/workflows/release.yml must name the template sync job after latest images"
   if grep -R --line-number -i -E '\[(skip ci|ci skip|skip actions|actions skip)\]' .github/workflows >/dev/null; then
     fail "workflow-generated commits must not include skip-ci directives"
   fi

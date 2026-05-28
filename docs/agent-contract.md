@@ -117,7 +117,17 @@ Required metadata includes:
 - `regionModelPresets`
 
 `template.yaml` is the single metadata source consumed by Agent Hub. Release
-automation updates its `image` field after version image publishing.
+automation keeps real agent image refs on the repository owner used by the
+release workflow:
+
+```text
+ghcr.io/<owner>/<agent-id>:latest
+```
+
+Release builds also push traceable images in the form
+`ghcr.io/<owner>/<agent>:build-YYYYMMDD-<12-char-sha>`. Those `build-*` tags are
+for audit and rollback investigations; Agent Hub deploys the `latest` ref from
+`template.yaml`.
 
 `template.yaml` is the metadata source for local manifests:
 

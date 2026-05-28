@@ -30,6 +30,11 @@ agents/my-agent/
 - `template.yaml`: Agent Hub 模板目录元数据、访问能力、设置 schema 和模型预设
 - `manifests/*.yaml.tmpl`: Agent Hub 渲染的 Devbox、Service、Ingress 模板
 
+真实 agent 的 `template.yaml.image` 必须写成
+`ghcr.io/<owner>/<agent-id>:latest`，其中 `<owner>` 必须和 release workflow
+使用的仓库 owner 一致。Release workflow 会推送 `latest` 和 `build-*`，
+Agent Hub 只从模板读取 `latest`。
+
 ## 配置原则
 
 - 非敏感开关：环境变量

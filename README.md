@@ -89,10 +89,13 @@ test/
 
 GitHub Actions 会根据 `registry/agents.yaml` 生成构建矩阵。
 
-- 分支 push、tag 和手动发布都会构建版本镜像：
-  - `ghcr.io/<owner>/<agent>:<template.yaml image tag>`
+- Agent Hub 部署镜像固定读取 `agents/<agent>/template.yaml` 中的
+  `ghcr.io/<owner>/<agent>:latest`
+- 每次 release 额外推送一个追踪镜像：
+  `ghcr.io/<owner>/<agent>:build-YYYYMMDD-<12位sha>`
 
-发布成功后，Actions 会把 enabled agents 的 `agents/<agent>/template.yaml` 镜像引用同步为版本镜像。
+发布成功后，Actions 会确保 enabled agents 的 `agents/<agent>/template.yaml`
+镜像引用保持为 `:latest`。
 
 ## Agent Hub 模板
 

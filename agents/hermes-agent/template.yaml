@@ -2,7 +2,7 @@ id: hermes-agent
 name: Hermes Agent
 shortName: Hermes
 description: Hermes Agent gateway for Agent Hub with API, terminal, file, SSH, and IDE access.
-image: ghcr.io/nightwhite/hermes-agent:0.14.0-agenthub-test.2
+image: ghcr.io/nightwhite/hermes-agent:latest
 port: 8642
 defaultArgs:
   - start
