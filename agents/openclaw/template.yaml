@@ -78,37 +78,6 @@ settings:
         kind: runtime
         key: storage
   agent:
-    - key: provider
-      label: Provider
-      type: select
-      required: true
-      binding:
-        kind: agent
-        key: modelProvider
-      rebootstrap: true
-      options:
-        - value: custom:aiproxy-chat
-          label: AI-Proxy - Chat Completions
-        - value: custom:aiproxy-responses
-          label: AI-Proxy - Responses API
-        - value: custom:aiproxy-anthropic
-          label: AI-Proxy - Anthropic Messages
-    - key: model
-      label: Model
-      type: select
-      required: true
-      binding:
-        kind: agent
-        key: model
-      rebootstrap: true
-    - key: baseURL
-      label: Base URL
-      type: url
-      required: true
-      binding:
-        kind: agent
-        key: modelBaseURL
-      rebootstrap: true
     - key: gatewayToken
       label: Gateway Token
       type: text
@@ -124,6 +93,28 @@ settings:
       binding:
         kind: derived
         key: keySource
+modelIntegration:
+  type: ai-agent-switch
+  client: openclaw
+  provider:
+    id: aiproxy
+    name:
+      zh: AI Proxy
+      en: AI Proxy
+    baseURL:
+      source: workspace
+    apiKeyEnv: AGENT_MODEL_APIKEY
+  slots:
+    - key: main
+      label:
+        zh: 主模型
+        en: Main model
+      required: true
+      mutable: true
+      defaultModels:
+        us: gpt-5.5
+        cn: glm-5.1
+      modelTypes: [text]
 regionModelTypes:
   us:
     - key: text

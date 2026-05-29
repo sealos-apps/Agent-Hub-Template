@@ -2,6 +2,8 @@
 
 当前仓库只保留目录契约，不提供仓库级脚手架或自动生成脚本。新增 agent 时直接复制 `agents/_template`，然后替换占位内容。
 
+模型初始化、模型切换和当前模型查询必须遵循 `docs/agent-hub-ai-agent-switch.md`，不要在镜像构建或默认启动里新增 Agent Hub 专用初始化命令。
+
 ## 目录结构
 
 ```text
@@ -44,6 +46,18 @@ Agent Hub 只从模板读取 `latest`。
 - agent 私有数据目录：`/root/.<agent-name>`
 
 不要把运行期密钥写进镜像，也不要让每个 agent 通过仓库统一配置脚本中转。
+
+## 模型配置
+
+新增支持模型配置的 agent 时，必须在 `template.yaml` 声明 `modelIntegration`。
+
+- 单模型 agent 声明单个 `main` slot。
+- 多模型 agent 按 `ai-agent-switch` adapter 已支持的能力声明多个 slot。
+- 每个 slot 的 `label` 必须是 i18n map，`modelTypes` 必须引用 `regionModelTypes.<region>[].key`。
+- 每个 slot 的 `defaultModels` 必须按 region 显式声明，且每个值必须存在于对应 `regionModelTypes.<region>` 可选模型中；缺失或非法直接报错，不 fallback。
+- 不要再通过 `settings.agent` 新增 `provider`、`model`、`baseURL` 三个字段。
+
+完整 schema 和命令契约见 `docs/agent-hub-ai-agent-switch.md`。
 
 ## 接入步骤
 

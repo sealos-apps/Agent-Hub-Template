@@ -2,6 +2,10 @@
 
 This is the repository-level contract for every Agent Hub runtime image.
 
+Model initialization and switching are defined in
+`docs/agent-hub-ai-agent-switch.md`. Do not introduce agent-specific Agent Hub
+initialization commands in image build scripts or default startup scripts.
+
 ## Required Files
 
 Each agent directory must contain:
@@ -116,6 +120,10 @@ Required metadata includes:
 - `settings`
 - `regionModelPresets`
 
+Templates that support model configuration must also include `modelIntegration`.
+That field is the entry point for Agent Hub model integration and is specified
+in `docs/agent-hub-ai-agent-switch.md`.
+
 `template.yaml` is the single metadata source consumed by Agent Hub. Release
 automation keeps real agent image refs on the repository owner used by the
 release workflow:
@@ -140,6 +148,28 @@ for audit and rollback investigations; Agent Hub deploys the `latest` ref from
 - `bootstrap` and `healthcheck` are not part of this repository contract.
 - `deploy.yaml` is not part of this repository contract; Agent Hub deployment
   resources live under `manifests/`.
+
+Model field ownership:
+
+- `modelIntegration`: declares the integration type, `ai-agent-switch` client,
+  provider metadata, model slots, i18n labels, mutability, defaults, and allowed
+  model type keys.
+- `modelIntegration.slots[].defaultModels`: declares each region default
+  explicitly. Every value must exist in the matching `regionModelTypes.<region>`
+  model list; missing or invalid region defaults are errors and must not fall
+  back to another region or list order.
+- `regionModelTypes`: owns region-specific model type keys and the model lists
+  referenced by `modelIntegration.slots[].modelTypes`.
+- `regionModelPresets`: owns flattened provider/model presets consumed by Agent
+  Hub compatibility code and UI options.
+- `settings`: owns non-model runtime settings; do not add new
+  `settings.agent.provider`, `settings.agent.model`, or
+  `settings.agent.baseURL` fields for model selection.
+
+Agent Hub renders and validates model configuration from template data, then
+executes `ai-agent-switch provider init` and
+`ai-agent-switch client configure` inside the running Devbox. Templates must not
+define shell commands for model initialization or model switching.
 
 The manifest templates are rendered by Agent Hub with Go template data such as
 `.Agent.Name`, `.Agent.Namespace`, `.Image`, `.SelectorLabels`, and

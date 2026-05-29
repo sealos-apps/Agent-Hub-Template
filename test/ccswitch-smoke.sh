@@ -233,20 +233,22 @@ docker run -d \
   -e "API_SERVER_KEY=${HERMES_API_SERVER_KEY}" \
   "${docker_proxy_env[@]+"${docker_proxy_env[@]}"}" \
   "$HERMES_IMAGE" \
-  bash -lc '
-    set -euo pipefail
-    ai-agent-switch agent-hub init \
-      --client hermes \
-      --provider-id ccswitch \
-      --provider-name CCSwitch \
-      --model-type openai-chat-compatible \
-      --base-url "$CCSWITCH_CONTAINER_BASE_URL" \
-      --api-key-env CCSWITCH_API_KEY \
-      --model "$CCSWITCH_MODEL" \
-      --available-model "$CCSWITCH_MODEL" \
-      -y \
-      --json
-    exec /opt/agent/bin/start
+    bash -lc '
+      set -euo pipefail
+      ai-agent-switch provider init \
+        --id ccswitch \
+        --name CCSwitch \
+        --base-url "$CCSWITCH_CONTAINER_BASE_URL" \
+        --api-key-env CCSWITCH_API_KEY \
+        --model "${CCSWITCH_MODEL}:chat_completions" \
+        --default-model "$CCSWITCH_MODEL" \
+        --json >/dev/null
+      ai-agent-switch client configure \
+        --client hermes \
+        --slot "main=ccswitch/${CCSWITCH_MODEL}" \
+        -y \
+        --json >/dev/null
+      exec /opt/agent/bin/start
   ' >/dev/null
 wait_for_hermes
 
@@ -272,20 +274,22 @@ docker run -d \
   -e "OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}" \
   "${docker_proxy_env[@]+"${docker_proxy_env[@]}"}" \
   "$OPENCLAW_IMAGE" \
-  bash -lc '
-    set -euo pipefail
-    ai-agent-switch agent-hub init \
-      --client openclaw \
-      --provider-id ccswitch \
-      --provider-name CCSwitch \
-      --model-type openai-chat-compatible \
-      --base-url "$CCSWITCH_CONTAINER_BASE_URL" \
-      --api-key-env CCSWITCH_API_KEY \
-      --model "$CCSWITCH_MODEL" \
-      --available-model "$CCSWITCH_MODEL" \
-      -y \
-      --json
-    exec /opt/agent/bin/start
+    bash -lc '
+      set -euo pipefail
+      ai-agent-switch provider init \
+        --id ccswitch \
+        --name CCSwitch \
+        --base-url "$CCSWITCH_CONTAINER_BASE_URL" \
+        --api-key-env CCSWITCH_API_KEY \
+        --model "${CCSWITCH_MODEL}:chat_completions" \
+        --default-model "$CCSWITCH_MODEL" \
+        --json >/dev/null
+      ai-agent-switch client configure \
+        --client openclaw \
+        --slot "main=ccswitch/${CCSWITCH_MODEL}" \
+        -y \
+        --json >/dev/null
+      exec /opt/agent/bin/start
   ' >/dev/null
 wait_for_openclaw
 

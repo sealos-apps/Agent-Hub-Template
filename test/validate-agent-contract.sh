@@ -235,21 +235,8 @@ for key in ("cpu", "memory", "storage"):
 agent_fields = [field for field in settings["agent"] if isinstance(field, dict)]
 agent_field_index = {field.get("key"): field for field in agent_fields}
 for key in ("provider", "model", "baseURL"):
-    field = agent_field_index.get(key)
-    if not isinstance(field, dict):
-        raise SystemExit(f"{template_path}: settings.agent must include {key}")
-    if field.get("required") is not True:
-        raise SystemExit(f"{template_path}: settings.agent.{key} must be required")
-    if field.get("rebootstrap") is not True:
-        raise SystemExit(f"{template_path}: settings.agent.{key} must set rebootstrap: true")
-
-provider_options = {
-    str(option.get("value")).strip()
-    for option in agent_field_index["provider"].get("options", [])
-    if isinstance(option, dict) and str(option.get("value", "")).strip()
-}
-if not provider_options:
-    raise SystemExit(f"{template_path}: settings.agent.provider must define options")
+    if key in agent_field_index:
+        raise SystemExit(f"{template_path}: settings.agent.{key} must be declared through modelIntegration, not settings.agent")
 
 presets = template.get("regionModelPresets")
 model_types = template.get("regionModelTypes")
@@ -270,8 +257,6 @@ if presets is not None:
             for key in ("value", "label", "provider", "apiMode"):
                 if not item.get(key):
                     raise SystemExit(f"{template_path}: regionModelPresets.{region} entries must include {key}")
-            if str(item["provider"]).strip() not in provider_options:
-                raise SystemExit(f"{template_path}: model preset provider {item['provider']} is missing from provider options")
 
 if model_types is not None:
     if not isinstance(model_types, dict):
@@ -296,8 +281,111 @@ if model_types is not None:
                 for key in ("value", "label", "provider", "apiMode"):
                     if not item.get(key):
                         raise SystemExit(f"{template_path}: regionModelTypes.{region}.{group.get('key')} models must include {key}")
-                if str(item["provider"]).strip() not in provider_options:
-                    raise SystemExit(f"{template_path}: model provider {item['provider']} is missing from provider options")
+
+integration = template.get("modelIntegration")
+if not isinstance(integration, dict):
+    raise SystemExit(f"{template_path}: modelIntegration is required")
+if integration.get("type") != "ai-agent-switch":
+    raise SystemExit(f"{template_path}: modelIntegration.type must be ai-agent-switch")
+if not str(integration.get("client") or "").strip():
+    raise SystemExit(f"{template_path}: modelIntegration.client is required")
+
+provider = integration.get("provider")
+if not isinstance(provider, dict):
+    raise SystemExit(f"{template_path}: modelIntegration.provider must be a mapping")
+for key in ("id", "apiKeyEnv"):
+    if not str(provider.get(key) or "").strip():
+        raise SystemExit(f"{template_path}: modelIntegration.provider.{key} is required")
+provider_id = str(provider.get("id") or "").strip()
+provider_name = provider.get("name")
+if not isinstance(provider_name, dict) or not str(provider_name.get("zh") or "").strip() or not str(provider_name.get("en") or "").strip():
+    raise SystemExit(f"{template_path}: modelIntegration.provider.name must include zh and en")
+base_url = provider.get("baseURL")
+if not isinstance(base_url, dict) or not str(base_url.get("source") or "").strip():
+    raise SystemExit(f"{template_path}: modelIntegration.provider.baseURL.source is required")
+
+if not isinstance(model_types, dict):
+    raise SystemExit(f"{template_path}: regionModelTypes is required for modelIntegration")
+if presets is not None:
+    for region, items in presets.items():
+        for item in items:
+            model_provider = str(item.get("provider") or "").strip()
+            if not model_provider.startswith(f"custom:{provider_id}-"):
+                raise SystemExit(f"{template_path}: regionModelPresets.{region} provider {model_provider} must use modelIntegration.provider.id {provider_id}")
+region_type_models = {}
+for region, groups in model_types.items():
+    if not isinstance(groups, list):
+        raise SystemExit(f"{template_path}: regionModelTypes.{region} must be a list")
+    region_type_models[region] = {}
+    for group in groups:
+        if not isinstance(group, dict):
+            raise SystemExit(f"{template_path}: regionModelTypes.{region} entries must be mappings")
+        type_key = str(group.get("key") or "").strip()
+        models = group.get("models")
+        if not type_key or not isinstance(models, list):
+            continue
+        for item in models:
+            if isinstance(item, dict):
+                model_provider = str(item.get("provider") or "").strip()
+                if not model_provider.startswith(f"custom:{provider_id}-"):
+                    raise SystemExit(f"{template_path}: regionModelTypes.{region} provider {model_provider} must use modelIntegration.provider.id {provider_id}")
+        region_type_models[region][type_key] = {
+            str(item.get("value") or "").strip()
+            for item in models
+            if isinstance(item, dict) and str(item.get("value") or "").strip()
+        }
+
+slots = integration.get("slots")
+if not isinstance(slots, list) or not slots:
+    raise SystemExit(f"{template_path}: modelIntegration.slots must be a non-empty list")
+slot_keys = set()
+region_keys = set(region_type_models)
+for slot in slots:
+    if not isinstance(slot, dict):
+        raise SystemExit(f"{template_path}: modelIntegration.slots entries must be mappings")
+    slot_key = str(slot.get("key") or "").strip()
+    if not slot_key:
+        raise SystemExit(f"{template_path}: modelIntegration.slots[].key is required")
+    if slot_key in slot_keys:
+        raise SystemExit(f"{template_path}: duplicate modelIntegration slot {slot_key}")
+    slot_keys.add(slot_key)
+
+    label = slot.get("label")
+    if not isinstance(label, dict) or not str(label.get("zh") or "").strip() or not str(label.get("en") or "").strip():
+        raise SystemExit(f"{template_path}: modelIntegration.slots.{slot_key}.label must include zh and en")
+
+    slot_model_types = slot.get("modelTypes")
+    if not isinstance(slot_model_types, list) or not slot_model_types:
+        raise SystemExit(f"{template_path}: modelIntegration.slots.{slot_key}.modelTypes must be non-empty")
+    slot_type_keys = [str(item or "").strip() for item in slot_model_types]
+    if any(not item for item in slot_type_keys):
+        raise SystemExit(f"{template_path}: modelIntegration.slots.{slot_key}.modelTypes must not include empty values")
+    for region, type_models in region_type_models.items():
+        missing_types = [type_key for type_key in slot_type_keys if type_key not in type_models]
+        if missing_types:
+            raise SystemExit(f"{template_path}: modelIntegration.slots.{slot_key}.modelTypes reference missing regionModelTypes.{region} keys: {', '.join(missing_types)}")
+
+    if "defaultModel" in slot:
+        raise SystemExit(f"{template_path}: modelIntegration.slots.{slot_key} must use defaultModels, not defaultModel")
+    default_models = slot.get("defaultModels")
+    if not isinstance(default_models, dict):
+        raise SystemExit(f"{template_path}: modelIntegration.slots.{slot_key}.defaultModels must be a mapping")
+    default_regions = set(default_models)
+    missing_regions = sorted(region_keys - default_regions)
+    if missing_regions:
+        raise SystemExit(f"{template_path}: modelIntegration.slots.{slot_key}.defaultModels missing regions: {', '.join(missing_regions)}")
+    unknown_regions = sorted(default_regions - region_keys)
+    if unknown_regions:
+        raise SystemExit(f"{template_path}: modelIntegration.slots.{slot_key}.defaultModels has unknown regions: {', '.join(unknown_regions)}")
+    for region, default_model in default_models.items():
+        model_value = str(default_model or "").strip()
+        if not model_value:
+            raise SystemExit(f"{template_path}: modelIntegration.slots.{slot_key}.defaultModels.{region} is required")
+        allowed_models = set()
+        for type_key in slot_type_keys:
+            allowed_models.update(region_type_models[region][type_key])
+        if model_value not in allowed_models:
+            raise SystemExit(f"{template_path}: modelIntegration.slots.{slot_key}.defaultModels.{region} must reference a model in the slot modelTypes")
 
 if template.get("backendSupported") is True:
     if template.get("manifestDir") != "manifests":
@@ -513,13 +601,13 @@ done
 validate_workflow_contracts
 
 old_contract_refs="$(mktemp)"
-if grep -R --line-number -E 'agent-hub[[:space:]]+init-model|--provider-type|--request-format' \
+if grep -R --line-number -E 'agent-hub[[:space:]]+(init|sync|init-model)|--provider-type|--request-format' \
   .github agents test README.md docs \
   --exclude=validate-agent-contract.sh \
   --exclude-dir=superpowers >"$old_contract_refs"; then
   cat "$old_contract_refs" >&2
   rm -f "$old_contract_refs"
-  fail "old ai-agent-switch agent-hub init-model contract must not be used"
+  fail "old ai-agent-switch agent-hub contract must not be used"
 fi
 rm -f "$old_contract_refs"
 

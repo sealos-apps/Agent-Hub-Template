@@ -124,6 +124,7 @@ docker build -f agents/cowagent/Dockerfile -t agent-hub/cowagent:local .
 参考：
 
 - `docs/agent-contract.md`
+- `docs/agent-hub-ai-agent-switch.md`
 - `docs/adding-a-new-agent.md`
 - `docs/testing-hermes.md`
 - `test/README.md`

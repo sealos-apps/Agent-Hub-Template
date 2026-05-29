@@ -89,15 +89,17 @@ done
 [[ "$ready" -eq 1 ]] || fail "OpenClaw readiness endpoint did not become ready"
 
 printf '==> applying Agent Hub model through ai-agent-switch\n'
-docker exec -e HOME=/root "$CONTAINER" ai-agent-switch agent-hub init \
-  --client openclaw \
-  --provider-id aiproxy \
-  --provider-name "AI Proxy" \
-  --model-type openai-chat-compatible \
+docker exec -e HOME=/root "$CONTAINER" ai-agent-switch provider init \
+  --id aiproxy \
+  --name "AI Proxy" \
   --base-url http://host.docker.internal:15721/v1 \
   --api-key-env AIPROXY_API_KEY \
-  --model glm-4.6 \
-  --available-model glm-4.6 \
+  --model glm-4.6:chat_completions \
+  --default-model glm-4.6 \
+  --json >/dev/null
+docker exec -e HOME=/root "$CONTAINER" ai-agent-switch client configure \
+  --client openclaw \
+  --slot main=aiproxy/glm-4.6 \
   -y \
   --json | python3 -c 'import json, sys; payload=json.load(sys.stdin); assert payload["applied"] is True, payload'
 

@@ -15,7 +15,7 @@
 ## Upstream Install
 
 - OpenClaw: `npm install -g openclaw@latest`
-- ai-agent-switch: `curl -fsSL https://raw.githubusercontent.com/sealos-apps/ai-agent-switch/main/install.sh | sh -s -- <latest-release-tag>`
+- ai-agent-switch: `curl -fsSL https://raw.githubusercontent.com/sealos-apps/ai-agent-switch/main/install.sh | sh`
 
 ## 运行方式
 
@@ -64,7 +64,7 @@ OpenClaw 配置仍然写入原生配置文件：
 - `~/.openclaw/openclaw.json`
 - `~/.openclaw/.env`
 
-镜像构建和默认启动都不执行 Agent Hub 初始化命令。模型/provider 配置由运行时或 Agent Hub 后续流程负责。
+镜像构建和默认启动都不执行模型初始化或模型切换。模型/provider 配置由 Agent Hub 在运行期负责。
 
 Agent Hub 场景下同一个 Devbox 会通过平台鉴权和网关 token 控制访问，镜像默认写入 `gateway.controlUi.allowedOrigins=["*"]` 和 `gateway.controlUi.dangerouslyDisableDeviceAuth=true`，关闭 OpenClaw Control UI 的来源限制和设备配对流程。
 
