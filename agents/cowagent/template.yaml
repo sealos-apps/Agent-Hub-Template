@@ -95,7 +95,7 @@ modelIntegration:
       en: AI Proxy
     baseURL:
       source: workspace
-    apiKeyEnv: AGENT_MODEL_APIKEY
+    apiKeyEnv: OPEN_AI_API_KEY
   slots:
     - key: main
       label:
@@ -104,20 +104,134 @@ modelIntegration:
       required: true
       mutable: true
       defaultModels:
-        us: glm-5.1
+        us: gpt-5.4
         cn: glm-5.1
       modelTypes: [text]
+    - key: vision
+      label:
+        zh: 视觉理解模型
+        en: Vision model
+      required: true
+      mutable: true
+      defaultModels:
+        us: gemini-3.5-flash
+        cn: qwen3.6-plus
+      modelTypes: [vision]
+    - key: image
+      label:
+        zh: 图片生成模型
+        en: Image generation model
+      required: true
+      mutable: true
+      defaultModels:
+        us: gemini-3.1-flash-image-preview
+        cn: qwen-image-2.0-pro
+      modelTypes: [image]
+    - key: asr
+      label:
+        zh: 语音识别模型
+        en: Speech-to-text model
+      required: false
+      mutable: true
+      defaultModels:
+        us: gpt-4o-mini-transcribe
+        cn: qwen3-asr-flash
+      modelTypes: [audio]
+    - key: tts
+      label:
+        zh: 语音合成模型
+        en: Text-to-speech model
+      required: false
+      mutable: true
+      defaultModels:
+        us: gpt-4o-mini-tts
+        cn: qwen3-tts-flash
+      modelTypes: [audio]
+    - key: embedding
+      label:
+        zh: 向量模型
+        en: Embedding model
+      required: false
+      mutable: true
+      defaultModels:
+        us: text-embedding-3-large
+        cn: text-embedding-v4
+      modelTypes: [embedding]
 regionModelTypes:
   us:
     - key: text
       label: 普通模型
       models:
+        - value: gpt-5.5
+          label: GPT-5.5
+          helper: OpenAI
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
+          capabilities: [chat, reasoning, agent]
+          inputModalities: [text]
+          outputModalities: [text]
+        - value: gpt-5.4
+          label: GPT-5.4
+          helper: OpenAI
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
+          capabilities: [chat, reasoning, agent]
+          inputModalities: [text]
+          outputModalities: [text]
+        - value: gpt-5.4-mini
+          label: GPT-5.4 Mini
+          helper: OpenAI
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
+          capabilities: [chat, reasoning, agent]
+          inputModalities: [text]
+          outputModalities: [text]
+        - value: claude-opus-4-7
+          label: Claude Opus 4.7
+          helper: Anthropic
+          provider: custom:aiproxy-anthropic
+          apiMode: anthropic_messages
+          capabilities: [chat, reasoning, agent]
+          inputModalities: [text]
+          outputModalities: [text]
+        - value: claude-opus-4-6
+          label: Claude Opus 4.6
+          helper: Anthropic
+          provider: custom:aiproxy-anthropic
+          apiMode: anthropic_messages
+          capabilities: [chat, reasoning, agent]
+          inputModalities: [text]
+          outputModalities: [text]
+        - value: claude-sonnet-4-6
+          label: Claude Sonnet 4.6
+          helper: Anthropic
+          provider: custom:aiproxy-anthropic
+          apiMode: anthropic_messages
+          capabilities: [chat, reasoning, agent]
+          inputModalities: [text]
+          outputModalities: [text]
         - value: glm-5.1
           label: GLM-5.1
           helper: GLM
           provider: custom:aiproxy-chat
           apiMode: chat_completions
-          capabilities: [chat]
+          capabilities: [chat, reasoning]
+          inputModalities: [text]
+          outputModalities: [text]
+        - value: kimi-k2.6
+          label: Kimi K2.6
+          helper: Kimi
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
+          capabilities: [chat, reasoning]
+          inputModalities: [text]
+          outputModalities: [text]
+        - value: deepseek-v4-pro
+          label: DeepSeek V4 Pro
+          helper: DeepSeek
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
+          capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
         - value: deepseek-v4-flash
@@ -125,31 +239,109 @@ regionModelTypes:
           helper: DeepSeek
           provider: custom:aiproxy-chat
           apiMode: chat_completions
-          capabilities: [chat]
+          capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
-    # - key: multimodal
-    #   label: 多模态模型
-    #   models:
-    #     - value: glm-4.6v
-    #       label: GLM-4.6V
-    #       helper: GLM
-    #       provider: custom:aiproxy-chat
-    #       apiMode: chat_completions
-    #       capabilities: [vision, multimodal]
-    #       inputModalities: [text, image]
-    #       outputModalities: [text]
-    # - key: image
-    #   label: 生图模型
-    #   models:
-    #     - value: gpt-image-2
-    #       label: GPT Image 2
-    #       helper: OpenAI
-    #       provider: custom:aiproxy-responses
-    #       apiMode: image_generation
-    #       capabilities: [image_generation]
-    #       inputModalities: [text, image]
-    #       outputModalities: [image]
+    - key: vision
+      label: 视觉理解模型
+      models:
+        - value: gemini-3.5-flash
+          label: Gemini 3.5 Flash
+          helper: Google
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
+          capabilities: [vision, multimodal]
+          inputModalities: [text, image]
+          outputModalities: [text]
+        - value: gemini-3.1-pro-preview
+          label: Gemini 3.1 Pro Preview
+          helper: Google
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
+          capabilities: [vision, multimodal]
+          inputModalities: [text, image]
+          outputModalities: [text]
+        - value: gemini-3.1-flash-lite-preview
+          label: Gemini 3.1 Flash Lite Preview
+          helper: Google
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
+          capabilities: [vision, multimodal]
+          inputModalities: [text, image]
+          outputModalities: [text]
+        - value: gpt-5.4-mini
+          label: GPT-5.4 Mini
+          helper: OpenAI
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
+          capabilities: [vision, multimodal]
+          inputModalities: [text, image]
+          outputModalities: [text]
+    - key: image
+      label: 生图模型
+      models:
+        - value: gemini-3.1-flash-image-preview
+          label: Gemini 3.1 Flash Image Preview
+          helper: Google · Nano Banana 2
+          provider: custom:aiproxy-chat
+          apiMode: openai_compatible
+          capabilities: [image_generation]
+          inputModalities: [text, image]
+          outputModalities: [image]
+        - value: gemini-3-pro-image-preview
+          label: Gemini 3 Pro Image Preview
+          helper: Google · Nano Banana Pro
+          provider: custom:aiproxy-chat
+          apiMode: openai_compatible
+          capabilities: [image_generation]
+          inputModalities: [text, image]
+          outputModalities: [image]
+        - value: gpt-image-2
+          label: GPT Image 2
+          helper: OpenAI
+          provider: custom:aiproxy-chat
+          apiMode: openai_compatible
+          capabilities: [image_generation]
+          inputModalities: [text, image]
+          outputModalities: [image]
+    - key: audio
+      label: 音频模型
+      models:
+        - value: gpt-4o-mini-transcribe
+          label: GPT-4o Mini Transcribe
+          helper: OpenAI · ASR
+          provider: custom:aiproxy-chat
+          apiMode: openai_compatible
+          capabilities: [audio, speech_to_text]
+          inputModalities: [audio]
+          outputModalities: [text]
+        - value: gpt-4o-mini-tts
+          label: GPT-4o Mini TTS
+          helper: OpenAI · TTS
+          provider: custom:aiproxy-chat
+          apiMode: openai_compatible
+          capabilities: [audio, text_to_speech]
+          inputModalities: [text]
+          outputModalities: [audio]
+    - key: embedding
+      label: 向量模型
+      models:
+        - value: text-embedding-3-large
+          label: Text Embedding 3 Large
+          helper: OpenAI
+          provider: custom:aiproxy-chat
+          apiMode: openai_compatible
+          capabilities: [embedding]
+          inputModalities: [text]
+          outputModalities: [embedding]
+        - value: text-embedding-3-small
+          label: Text Embedding 3 Small
+          helper: OpenAI
+          provider: custom:aiproxy-chat
+          apiMode: openai_compatible
+          capabilities: [embedding]
+          inputModalities: [text]
+          outputModalities: [embedding]
   cn:
     - key: text
       label: 普通模型
@@ -178,33 +370,103 @@ regionModelTypes:
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
-        - value: qwen3-max
-          label: Qwen3 Max
-          helper: Qwen
+        - value: deepseek-v4-flash
+          label: DeepSeek V4 Flash
+          helper: DeepSeek
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
-    # - key: multimodal
-    #   label: 多模态模型
-    #   models:
-    #     - value: qwen3-vl-plus
-    #       label: Qwen3 VL Plus
-    #       helper: Qwen
-    #       provider: custom:aiproxy-chat
-    #       apiMode: chat_completions
-    #       capabilities: [vision, multimodal]
-    #       inputModalities: [text, image]
-    #       outputModalities: [text]
-    # - key: image
-    #   label: 生图模型
-    #   models:
-    #     - value: cogview-4
-    #       label: CogView 4
-    #       helper: GLM
-    #       provider: custom:aiproxy-chat
-    #       apiMode: image_generation
-    #       capabilities: [image_generation]
-    #       inputModalities: [text]
-    #       outputModalities: [image]
+        - value: glm-5
+          label: GLM-5
+          helper: GLM
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
+          capabilities: [chat, reasoning]
+          inputModalities: [text]
+          outputModalities: [text]
+    - key: vision
+      label: 视觉理解模型
+      models:
+        - value: qwen3.6-plus
+          label: Qwen3.6 Plus
+          helper: Qwen
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
+          capabilities: [vision, multimodal]
+          inputModalities: [text, image]
+          outputModalities: [text]
+        - value: qwen3.5-plus
+          label: Qwen3.5 Plus
+          helper: Qwen
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
+          capabilities: [vision, multimodal]
+          inputModalities: [text, image]
+          outputModalities: [text]
+        - value: glm-5v-turbo
+          label: GLM-5V Turbo
+          helper: GLM
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
+          capabilities: [vision, multimodal]
+          inputModalities: [text, image]
+          outputModalities: [text]
+        - value: kimi-k2.6
+          label: Kimi K2.6
+          helper: Kimi
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
+          capabilities: [vision, multimodal]
+          inputModalities: [text, image]
+          outputModalities: [text]
+    - key: image
+      label: 生图模型
+      models:
+        - value: qwen-image-2.0-pro
+          label: Qwen Image 2.0 Pro
+          helper: Qwen
+          provider: custom:aiproxy-chat
+          apiMode: openai_compatible
+          capabilities: [image_generation]
+          inputModalities: [text, image]
+          outputModalities: [image]
+        - value: qwen-image-2.0
+          label: Qwen Image 2.0
+          helper: Qwen
+          provider: custom:aiproxy-chat
+          apiMode: openai_compatible
+          capabilities: [image_generation]
+          inputModalities: [text, image]
+          outputModalities: [image]
+    - key: audio
+      label: 音频模型
+      models:
+        - value: qwen3-asr-flash
+          label: Qwen3 ASR Flash
+          helper: Qwen · ASR
+          provider: custom:aiproxy-chat
+          apiMode: openai_compatible
+          capabilities: [audio, speech_to_text]
+          inputModalities: [audio]
+          outputModalities: [text]
+        - value: qwen3-tts-flash
+          label: Qwen3 TTS Flash
+          helper: Qwen · TTS
+          provider: custom:aiproxy-chat
+          apiMode: openai_compatible
+          capabilities: [audio, text_to_speech]
+          inputModalities: [text]
+          outputModalities: [audio]
+    - key: embedding
+      label: 向量模型
+      models:
+        - value: text-embedding-v4
+          label: Text Embedding V4
+          helper: Qwen
+          provider: custom:aiproxy-chat
+          apiMode: openai_compatible
+          capabilities: [embedding]
+          inputModalities: [text]
+          outputModalities: [embedding]

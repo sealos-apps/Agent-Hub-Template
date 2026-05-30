@@ -102,6 +102,7 @@ modelIntegration:
 当前允许的 `apiMode`：
 
 - `chat_completions`
+- `openai_compatible`
 - `codex_responses`
 - `anthropic_messages`
 

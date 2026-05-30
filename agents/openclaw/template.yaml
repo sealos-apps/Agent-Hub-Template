@@ -128,6 +128,22 @@ regionModelTypes:
           capabilities: [reasoning, code]
           inputModalities: [text]
           outputModalities: [text]
+        - value: gpt-5.4
+          label: GPT-5.4
+          helper: OpenAI
+          provider: custom:aiproxy-responses
+          apiMode: codex_responses
+          capabilities: [reasoning, code]
+          inputModalities: [text]
+          outputModalities: [text]
+        - value: gpt-5.4-mini
+          label: GPT-5.4 Mini
+          helper: OpenAI
+          provider: custom:aiproxy-responses
+          apiMode: codex_responses
+          capabilities: [reasoning, code]
+          inputModalities: [text]
+          outputModalities: [text]
         - value: claude-opus-4-7
           label: Claude Opus 4.7
           helper: Anthropic
@@ -136,36 +152,54 @@ regionModelTypes:
           capabilities: [reasoning, vision]
           inputModalities: [text, image]
           outputModalities: [text]
-        - value: glm-4.6
-          label: GLM-4.6
+        - value: claude-opus-4-6
+          label: Claude Opus 4.6
+          helper: Anthropic
+          provider: custom:aiproxy-anthropic
+          apiMode: anthropic_messages
+          capabilities: [reasoning, vision]
+          inputModalities: [text, image]
+          outputModalities: [text]
+        - value: claude-sonnet-4-6
+          label: Claude Sonnet 4.6
+          helper: Anthropic
+          provider: custom:aiproxy-anthropic
+          apiMode: anthropic_messages
+          capabilities: [reasoning, vision]
+          inputModalities: [text, image]
+          outputModalities: [text]
+        - value: glm-5.1
+          label: GLM-5.1
           helper: GLM
           provider: custom:aiproxy-chat
           apiMode: chat_completions
-          capabilities: [chat]
+          capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
-    # - key: multimodal
-    #   label: 多模态模型
-    #   models:
-    #     - value: glm-4.6v
-    #       label: GLM-4.6V
-    #       helper: GLM
-    #       provider: custom:aiproxy-chat
-    #       apiMode: chat_completions
-    #       capabilities: [vision, multimodal]
-    #       inputModalities: [text, image]
-    #       outputModalities: [text]
-    # - key: image
-    #   label: 生图模型
-    #   models:
-    #     - value: gpt-image-2
-    #       label: GPT Image 2
-    #       helper: OpenAI
-    #       provider: custom:aiproxy-responses
-    #       apiMode: image_generation
-    #       capabilities: [image_generation]
-    #       inputModalities: [text, image]
-    #       outputModalities: [image]
+        - value: kimi-k2.6
+          label: Kimi K2.6
+          helper: Kimi
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
+          capabilities: [chat, reasoning]
+          inputModalities: [text]
+          outputModalities: [text]
+        - value: deepseek-v4-pro
+          label: DeepSeek V4 Pro
+          helper: DeepSeek
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
+          capabilities: [chat, reasoning]
+          inputModalities: [text]
+          outputModalities: [text]
+        - value: deepseek-v4-flash
+          label: DeepSeek V4 Flash
+          helper: DeepSeek
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
+          capabilities: [chat, reasoning]
+          inputModalities: [text]
+          outputModalities: [text]
   cn:
     - key: text
       label: 普通模型
@@ -194,33 +228,19 @@ regionModelTypes:
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
-        - value: qwen3-max
-          label: Qwen3 Max
-          helper: Qwen
+        - value: deepseek-v4-flash
+          label: DeepSeek V4 Flash
+          helper: DeepSeek
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
-    # - key: multimodal
-    #   label: 多模态模型
-    #   models:
-    #     - value: qwen3-vl-plus
-    #       label: Qwen3 VL Plus
-    #       helper: Qwen
-    #       provider: custom:aiproxy-chat
-    #       apiMode: chat_completions
-    #       capabilities: [vision, multimodal]
-    #       inputModalities: [text, image]
-    #       outputModalities: [text]
-    # - key: image
-    #   label: 生图模型
-    #   models:
-    #     - value: cogview-4
-    #       label: CogView 4
-    #       helper: GLM
-    #       provider: custom:aiproxy-chat
-    #       apiMode: image_generation
-    #       capabilities: [image_generation]
-    #       inputModalities: [text]
-    #       outputModalities: [image]
+        - value: glm-5
+          label: GLM-5
+          helper: GLM
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
+          capabilities: [chat, reasoning]
+          inputModalities: [text]
+          outputModalities: [text]

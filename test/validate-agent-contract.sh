@@ -177,6 +177,13 @@ template = json.loads(os.environ["TEMPLATE_JSON"])
 if not isinstance(template, dict):
     raise SystemExit(f"{template_path}: top-level YAML must be a mapping")
 
+allowed_api_modes = {
+    "chat_completions",
+    "openai_compatible",
+    "codex_responses",
+    "anthropic_messages",
+}
+
 required = [
     "id",
     "name",
@@ -257,6 +264,9 @@ if presets is not None:
             for key in ("value", "label", "provider", "apiMode"):
                 if not item.get(key):
                     raise SystemExit(f"{template_path}: regionModelPresets.{region} entries must include {key}")
+            api_mode = str(item.get("apiMode") or "").strip()
+            if api_mode not in allowed_api_modes:
+                raise SystemExit(f"{template_path}: regionModelPresets.{region}.{item.get('value')} apiMode must be one of {', '.join(sorted(allowed_api_modes))}")
 
 if model_types is not None:
     if not isinstance(model_types, dict):
@@ -281,6 +291,9 @@ if model_types is not None:
                 for key in ("value", "label", "provider", "apiMode"):
                     if not item.get(key):
                         raise SystemExit(f"{template_path}: regionModelTypes.{region}.{group.get('key')} models must include {key}")
+                api_mode = str(item.get("apiMode") or "").strip()
+                if api_mode not in allowed_api_modes:
+                    raise SystemExit(f"{template_path}: regionModelTypes.{region}.{group.get('key')}.{item.get('value')} apiMode must be one of {', '.join(sorted(allowed_api_modes))}")
 
 integration = template.get("modelIntegration")
 if not isinstance(integration, dict):
