@@ -182,7 +182,54 @@ allowed_api_modes = {
     "openai_compatible",
     "codex_responses",
     "anthropic_messages",
+    "image_generation",
+    "video_generation",
+    "audio_transcriptions",
+    "audio_speech",
+    "embeddings",
 }
+
+allowed_model_kinds = {
+    "llm",
+    "vision",
+    "image_generation",
+    "video_generation",
+    "asr",
+    "tts",
+    "embedding",
+}
+
+api_mode_kinds = {
+    "chat_completions": {"llm", "vision"},
+    "openai_compatible": {"llm", "vision"},
+    "codex_responses": {"llm", "vision"},
+    "anthropic_messages": {"llm", "vision"},
+    "image_generation": {"image_generation"},
+    "video_generation": {"video_generation"},
+    "audio_transcriptions": {"asr"},
+    "audio_speech": {"tts"},
+    "embeddings": {"embedding"},
+}
+
+slot_model_kinds = {
+    "main": {"llm", "vision"},
+    "vision": {"llm", "vision"},
+    "image": {"image_generation"},
+    "video": {"video_generation"},
+    "asr": {"asr"},
+    "tts": {"tts"},
+    "embedding": {"embedding"},
+}
+
+def validate_model_kind(template_path, location, item, api_mode):
+    kind = str(item.get("kind") or "").strip()
+    if not kind:
+        raise SystemExit(f"{template_path}: {location} must include kind")
+    if kind not in allowed_model_kinds:
+        raise SystemExit(f"{template_path}: {location} kind must be one of {', '.join(sorted(allowed_model_kinds))}")
+    allowed_kinds = api_mode_kinds.get(api_mode, set())
+    if kind not in allowed_kinds:
+        raise SystemExit(f"{template_path}: {location} kind {kind} is incompatible with apiMode {api_mode}")
 
 required = [
     "id",
@@ -267,6 +314,7 @@ if presets is not None:
             api_mode = str(item.get("apiMode") or "").strip()
             if api_mode not in allowed_api_modes:
                 raise SystemExit(f"{template_path}: regionModelPresets.{region}.{item.get('value')} apiMode must be one of {', '.join(sorted(allowed_api_modes))}")
+            validate_model_kind(template_path, f"regionModelPresets.{region}.{item.get('value')}", item, api_mode)
 
 if model_types is not None:
     if not isinstance(model_types, dict):
@@ -294,6 +342,7 @@ if model_types is not None:
                 api_mode = str(item.get("apiMode") or "").strip()
                 if api_mode not in allowed_api_modes:
                     raise SystemExit(f"{template_path}: regionModelTypes.{region}.{group.get('key')}.{item.get('value')} apiMode must be one of {', '.join(sorted(allowed_api_modes))}")
+                validate_model_kind(template_path, f"regionModelTypes.{region}.{group.get('key')}.{item.get('value')}", item, api_mode)
 
 integration = template.get("modelIntegration")
 if not isinstance(integration, dict):
@@ -326,10 +375,12 @@ if presets is not None:
             if not model_provider.startswith(f"custom:{provider_id}-"):
                 raise SystemExit(f"{template_path}: regionModelPresets.{region} provider {model_provider} must use modelIntegration.provider.id {provider_id}")
 region_type_models = {}
+region_type_model_kinds = {}
 for region, groups in model_types.items():
     if not isinstance(groups, list):
         raise SystemExit(f"{template_path}: regionModelTypes.{region} must be a list")
     region_type_models[region] = {}
+    region_type_model_kinds[region] = {}
     for group in groups:
         if not isinstance(group, dict):
             raise SystemExit(f"{template_path}: regionModelTypes.{region} entries must be mappings")
@@ -344,6 +395,11 @@ for region, groups in model_types.items():
                     raise SystemExit(f"{template_path}: regionModelTypes.{region} provider {model_provider} must use modelIntegration.provider.id {provider_id}")
         region_type_models[region][type_key] = {
             str(item.get("value") or "").strip()
+            for item in models
+            if isinstance(item, dict) and str(item.get("value") or "").strip()
+        }
+        region_type_model_kinds[region][type_key] = {
+            str(item.get("value") or "").strip(): str(item.get("kind") or "").strip()
             for item in models
             if isinstance(item, dict) and str(item.get("value") or "").strip()
         }
@@ -395,10 +451,15 @@ for slot in slots:
         if not model_value:
             raise SystemExit(f"{template_path}: modelIntegration.slots.{slot_key}.defaultModels.{region} is required")
         allowed_models = set()
+        model_kinds = {}
         for type_key in slot_type_keys:
             allowed_models.update(region_type_models[region][type_key])
+            model_kinds.update(region_type_model_kinds[region][type_key])
         if model_value not in allowed_models:
             raise SystemExit(f"{template_path}: modelIntegration.slots.{slot_key}.defaultModels.{region} must reference a model in the slot modelTypes")
+        allowed_kinds = slot_model_kinds.get(slot_key)
+        if allowed_kinds is not None and model_kinds.get(model_value) not in allowed_kinds:
+            raise SystemExit(f"{template_path}: modelIntegration.slots.{slot_key}.defaultModels.{region} kind must be one of {', '.join(sorted(allowed_kinds))}")
 
 if template.get("backendSupported") is True:
     if template.get("manifestDir") != "manifests":

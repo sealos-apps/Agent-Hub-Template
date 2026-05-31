@@ -77,7 +77,7 @@ docker run --rm \
       --name CCSwitch \
       --base-url http://host.docker.internal:15721/v1 \
       --api-key-env CCSWITCH_API_KEY \
-      --model gpt-5.4:chat_completions \
+      --model gpt-5.4:chat_completions:llm \
       --default-model gpt-5.4 \
       --json
     ai-agent-switch client configure \
@@ -114,7 +114,7 @@ docker run -d \
       --name CCSwitch \
       --base-url http://host.docker.internal:15721/v1 \
       --api-key-env CCSWITCH_API_KEY \
-      --model gpt-5.4:chat_completions \
+      --model gpt-5.4:chat_completions:llm \
       --default-model gpt-5.4 \
       --json
     ai-agent-switch client configure --client hermes --slot main=ccswitch/gpt-5.4 -y --json

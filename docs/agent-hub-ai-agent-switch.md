@@ -83,7 +83,7 @@ modelIntegration:
 - `provider.id` 是传给 `provider init --id` 的 provider id；AIProxy 统一使用 `aiproxy`。
 - `provider.name` 和 `slots[].label` 必须是 i18n map，不要写成单一字符串。
 - `provider.baseURL.source: workspace` 表示 Agent Hub 从工作区模型服务配置获取 baseURL。
-- `provider.apiKeyEnv` 是容器内保存模型密钥的环境变量名，标准值为 `AGENT_MODEL_APIKEY`。
+- `provider.apiKeyEnv` 是传给 `provider init --api-key-env` 的容器内环境变量名；Hermes/OpenClaw 使用 `AGENT_MODEL_APIKEY`，CowAgent 使用其原生读取的 `OPEN_AI_API_KEY`。
 - `slots[].key` 只能使用对应 `ai-agent-switch` adapter 已支持的 slot key，例如单模型 agent 使用 `main`。
 - `slots[].required` 表示创建或保存配置时是否必须选择模型。
 - `slots[].mutable` 表示创建后是否允许在 Agent Hub 设置页修改。
@@ -91,12 +91,12 @@ modelIntegration:
 - `slots[].defaultModels.<region>` 必须引用同一 region 可选模型中的模型 ID。Agent Hub 按当前 region 读取对应值；缺失或非法必须直接报错，不允许 fallback 到其他 region 或第 1 个模型。
 - `slots[].modelTypes` 引用 `regionModelTypes.<region>[].key`，Agent Hub 只允许用户为该 slot 选择这些类型下的模型。
 
-## 模型 API Mode 映射
+## 模型调用与用途映射
 
-`template.yaml` 的模型预设必须为每个模型声明 `apiMode`。Agent Hub 调用 `provider init` 时必须把模型写成：
+`template.yaml` 的模型预设必须为每个模型声明 `apiMode` 和 `kind`。Agent Hub 调用 `provider init` 时必须把模型写成：
 
 ```text
-<modelId>:<apiMode>
+<modelId>:<apiMode>:<kind>
 ```
 
 当前允许的 `apiMode`：
@@ -105,8 +105,23 @@ modelIntegration:
 - `openai_compatible`
 - `codex_responses`
 - `anthropic_messages`
+- `image_generation`
+- `video_generation`
+- `audio_transcriptions`
+- `audio_speech`
+- `embeddings`
 
-这些值来自 Agent Hub 模板的 `regionModelPresets[*].models[*].apiMode`。配置页让用户选择模型后，Agent Hub 必须把选中的模型 ID 和 `apiMode` 一起传给 `provider init`。
+当前允许的 `kind`：
+
+- `llm`
+- `vision`
+- `image_generation`
+- `video_generation`
+- `asr`
+- `tts`
+- `embedding`
+
+这些值来自 Agent Hub 模板的 `regionModelTypes.<region>[].models[]` 或兼容展开后的 `regionModelPresets.<region>[]`。配置页让用户选择模型后，Agent Hub 必须把选中的模型 ID、`apiMode` 和 `kind` 一起保存到 slot annotation，并在 `provider init` 里透传。
 
 ## 默认模型来源
 
@@ -125,18 +140,19 @@ value: gpt-5.5
 label: GPT-5.5
 provider: custom:aiproxy-responses
 apiMode: codex_responses
+kind: llm
 ```
 
 当前模板里的默认值按 `defaultModels.<region>` 声明：
 
-| template id | region | 默认模型 | provider | apiMode |
-| --- | --- | --- | --- | --- |
-| `hermes-agent` | `us` | `gpt-5.5` | `custom:aiproxy-responses` | `codex_responses` |
-| `hermes-agent` | `cn` | `glm-5.1` | `custom:aiproxy-chat` | `chat_completions` |
-| `openclaw` | `us` | `gpt-5.5` | `custom:aiproxy-responses` | `codex_responses` |
-| `openclaw` | `cn` | `glm-5.1` | `custom:aiproxy-chat` | `chat_completions` |
-| `cowagent` | `us` | `glm-5.1` | `custom:aiproxy-chat` | `chat_completions` |
-| `cowagent` | `cn` | `glm-5.1` | `custom:aiproxy-chat` | `chat_completions` |
+| template id | region | slot | 默认模型 | provider | apiMode | kind |
+| --- | --- | --- | --- | --- | --- | --- |
+| `hermes-agent` | `us` | `main` | `gpt-5.5` | `custom:aiproxy-responses` | `codex_responses` | `llm` |
+| `hermes-agent` | `cn` | `main` | `glm-5.1` | `custom:aiproxy-chat` | `chat_completions` | `llm` |
+| `openclaw` | `us` | `main` | `gpt-5.5` | `custom:aiproxy-responses` | `codex_responses` | `llm` |
+| `openclaw` | `cn` | `main` | `glm-5.1` | `custom:aiproxy-chat` | `chat_completions` | `llm` |
+| `cowagent` | `us` | `main` | `gpt-5.4` | `custom:aiproxy-chat` | `chat_completions` | `llm` |
+| `cowagent` | `cn` | `main` | `glm-5.1` | `custom:aiproxy-chat` | `chat_completions` | `llm` |
 
 如果调整默认模型，不改 Agent Hub 代码，只调整模板里对应 slot 的 `defaultModels.<region>`。该值必须存在于对应 `regionModelTypes.<region>` 可选模型中；缺失或非法直接报错，不 fallback。
 
@@ -149,13 +165,13 @@ Agent Hub 执行 `provider init` 时，参数来源固定如下：
 | `--id` | 由模板 provider 映射而来；AIProxy 统一为 `aiproxy` |
 | `--name` | 由 provider 映射而来；AIProxy 统一为 `AI Proxy` |
 | `--base-url` | 创建页/设置页的 `baseURL` 字段，默认来自 Agent Hub 的 AIProxy baseURL 配置 |
-| `--api-key-env` | 容器内保存密钥的环境变量名，标准值为 `AGENT_MODEL_APIKEY` |
-| `--model` | 当前 region 下同一个 provider id 可用的模型列表；每个模型用 `value` 和 `apiMode` 组合成 `<value>:<apiMode>`，并重复传多个 `--model` |
+| `--api-key-env` | 模板 `modelIntegration.provider.apiKeyEnv`；Hermes/OpenClaw 为 `AGENT_MODEL_APIKEY`，CowAgent 为 `OPEN_AI_API_KEY` |
+| `--model` | 当前 region 下同一个 provider id 可用的模型列表；每个模型用 `value`、`apiMode` 和 `kind` 组合成 `<value>:<apiMode>:<kind>`，并重复传多个 `--model` |
 | `--default-model` | 当前选中的模型 `value` |
 
 `provider init` 不读取模板文件，也不负责挑默认模型。Agent Hub 必须先从模板和用户选择里算出这些值，再把结果传给容器内的 `ai-agent-switch`。
 
-AIProxy 的 3 个模板 provider 最终都映射成 `aiproxy`，所以 `provider init` 应写入当前 region 下所有 AIProxy 文本模型，而不是只写入当前选中的一个模型。`--default-model` 才表示当前选中或默认使用的模型。
+AIProxy 的 3 个模板 provider 最终都映射成 `aiproxy`，所以 `provider init` 应写入当前 region 下所有属于同一个 `aiproxy` provider 的可用模型，包括文本、图片、音频和向量模型，而不是只写入当前选中的一个模型。`--default-model` 才表示当前选中或默认使用的主模型。
 
 ## 初次部署流程
 
@@ -168,10 +184,10 @@ ai-agent-switch provider init \
   --id aiproxy \
   --name "AI Proxy" \
   --base-url "$AGENT_MODEL_BASEURL" \
-  --api-key-env AGENT_MODEL_APIKEY \
-  --model "<model-1>:<apiMode-1>" \
-  --model "<model-2>:<apiMode-2>" \
-  --model "<model-3>:<apiMode-3>" \
+  --api-key-env <apiKeyEnv> \
+  --model "<model-1>:<apiMode-1>:<kind-1>" \
+  --model "<model-2>:<apiMode-2>:<kind-2>" \
+  --model "<model-3>:<apiMode-3>:<kind-3>" \
   --default-model "$AGENT_MODEL" \
   --json
 
@@ -203,10 +219,10 @@ ai-agent-switch provider init \
   --id aiproxy \
   --name "AI Proxy" \
   --base-url "$AGENT_MODEL_BASEURL" \
-  --api-key-env AGENT_MODEL_APIKEY \
-  --model "<model-1>:<apiMode-1>" \
-  --model "<model-2>:<apiMode-2>" \
-  --model "<model-3>:<apiMode-3>" \
+  --api-key-env <apiKeyEnv> \
+  --model "<model-1>:<apiMode-1>:<kind-1>" \
+  --model "<model-2>:<apiMode-2>:<kind-2>" \
+  --model "<model-3>:<apiMode-3>:<kind-3>" \
   --default-model "$AGENT_MODEL" \
   --json
 
@@ -228,7 +244,7 @@ ai-agent-switch client configure \
 Agent Hub 配置页不从镜像内读取模型列表，而是读取模板元数据：
 
 - `settings`：定义配置页里的字段、展示方式和是否需要重新部署。
-- `regionModelPresets`：定义不同区域可选的 provider、baseURL、模型和 `apiMode`。
+- `regionModelPresets`：定义不同区域可选的 provider、baseURL、模型、`apiMode` 和 `kind`。
 - `presentation`、`access`、`actions`：定义模板在 Agent Hub 里的展示、访问入口和操作按钮。
 
 模型相关字段变更后，Agent Hub 应按「后续切换模型流程」同步到运行中的 agent，而不是要求镜像启动脚本自行解析模板。
@@ -241,6 +257,7 @@ Agent Hub 展示 K8s 元数据时可以读取 Devbox annotations/env：
 - `agent.sealos.io/model-baseurl`
 - `agent.sealos.io/model`
 - `agent.sealos.io/model-api-mode`
+- `agent.sealos.io/model-slots`
 - `AGENT_MODEL_PROVIDER`
 - `AGENT_MODEL_BASEURL`
 - `AGENT_MODEL_APIKEY`
@@ -262,7 +279,7 @@ CowAgent 原生运行时仍读取 `OPEN_AI_API_KEY` 和 `OPEN_AI_API_BASE`。模
 - `AGENT_MODEL_APIKEY`
 - `AGENT_MODEL_BASEURL`
 
-`ai-agent-switch client configure --client cowagent ...` 只保证同步 CowAgent 当前 adapter 已支持的 `main` 原生字段。非 `main` slot 只有在 adapter 明确支持对应原生字段后，才能宣称已在 CowAgent 原生运行时生效。运行时 env 仍需要由模板保证。
+`ai-agent-switch client configure --client cowagent ...` 只保证同步 CowAgent 当前 adapter 已支持的 `main` 原生字段。当前 adapter 已按 `kind` 支持 CowAgent 的 `main`、`vision`、`image`、`asr`、`tts` 和 `embedding` slot，并写入 CowAgent 对应原生配置字段。运行时 env 仍需要由模板保证。
 
 ## rebootstrap 规则
 

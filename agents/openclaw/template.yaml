@@ -125,6 +125,7 @@ regionModelTypes:
           helper: OpenAI
           provider: custom:aiproxy-responses
           apiMode: codex_responses
+          kind: llm
           capabilities: [reasoning, code]
           inputModalities: [text]
           outputModalities: [text]
@@ -133,6 +134,7 @@ regionModelTypes:
           helper: OpenAI
           provider: custom:aiproxy-responses
           apiMode: codex_responses
+          kind: llm
           capabilities: [reasoning, code]
           inputModalities: [text]
           outputModalities: [text]
@@ -141,6 +143,7 @@ regionModelTypes:
           helper: OpenAI
           provider: custom:aiproxy-responses
           apiMode: codex_responses
+          kind: llm
           capabilities: [reasoning, code]
           inputModalities: [text]
           outputModalities: [text]
@@ -149,6 +152,7 @@ regionModelTypes:
           helper: Anthropic
           provider: custom:aiproxy-anthropic
           apiMode: anthropic_messages
+          kind: llm
           capabilities: [reasoning, vision]
           inputModalities: [text, image]
           outputModalities: [text]
@@ -157,6 +161,7 @@ regionModelTypes:
           helper: Anthropic
           provider: custom:aiproxy-anthropic
           apiMode: anthropic_messages
+          kind: llm
           capabilities: [reasoning, vision]
           inputModalities: [text, image]
           outputModalities: [text]
@@ -165,6 +170,7 @@ regionModelTypes:
           helper: Anthropic
           provider: custom:aiproxy-anthropic
           apiMode: anthropic_messages
+          kind: llm
           capabilities: [reasoning, vision]
           inputModalities: [text, image]
           outputModalities: [text]
@@ -173,6 +179,7 @@ regionModelTypes:
           helper: GLM
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
@@ -181,6 +188,7 @@ regionModelTypes:
           helper: Kimi
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
@@ -189,6 +197,7 @@ regionModelTypes:
           helper: DeepSeek
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
@@ -197,6 +206,7 @@ regionModelTypes:
           helper: DeepSeek
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
@@ -209,6 +219,7 @@ regionModelTypes:
           helper: GLM
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
@@ -217,6 +228,7 @@ regionModelTypes:
           helper: Kimi
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
@@ -225,6 +237,7 @@ regionModelTypes:
           helper: DeepSeek
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
@@ -233,6 +246,7 @@ regionModelTypes:
           helper: DeepSeek
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
@@ -241,6 +255,7 @@ regionModelTypes:
           helper: GLM
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]

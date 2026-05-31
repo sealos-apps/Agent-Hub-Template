@@ -240,7 +240,7 @@ docker run -d \
         --name CCSwitch \
         --base-url "$CCSWITCH_CONTAINER_BASE_URL" \
         --api-key-env CCSWITCH_API_KEY \
-        --model "${CCSWITCH_MODEL}:chat_completions" \
+        --model "${CCSWITCH_MODEL}:chat_completions:llm" \
         --default-model "$CCSWITCH_MODEL" \
         --json >/dev/null
       ai-agent-switch client configure \
@@ -281,7 +281,7 @@ docker run -d \
         --name CCSwitch \
         --base-url "$CCSWITCH_CONTAINER_BASE_URL" \
         --api-key-env CCSWITCH_API_KEY \
-        --model "${CCSWITCH_MODEL}:chat_completions" \
+        --model "${CCSWITCH_MODEL}:chat_completions:llm" \
         --default-model "$CCSWITCH_MODEL" \
         --json >/dev/null
       ai-agent-switch client configure \

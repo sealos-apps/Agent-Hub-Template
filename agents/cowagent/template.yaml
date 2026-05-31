@@ -136,7 +136,7 @@ modelIntegration:
       defaultModels:
         us: gpt-4o-mini-transcribe
         cn: qwen3-asr-flash
-      modelTypes: [audio]
+      modelTypes: [asr]
     - key: tts
       label:
         zh: 语音合成模型
@@ -146,7 +146,7 @@ modelIntegration:
       defaultModels:
         us: gpt-4o-mini-tts
         cn: qwen3-tts-flash
-      modelTypes: [audio]
+      modelTypes: [tts]
     - key: embedding
       label:
         zh: 向量模型
@@ -167,6 +167,7 @@ regionModelTypes:
           helper: OpenAI
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [chat, reasoning, agent]
           inputModalities: [text]
           outputModalities: [text]
@@ -175,6 +176,7 @@ regionModelTypes:
           helper: OpenAI
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [chat, reasoning, agent]
           inputModalities: [text]
           outputModalities: [text]
@@ -183,6 +185,7 @@ regionModelTypes:
           helper: OpenAI
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [chat, reasoning, agent]
           inputModalities: [text]
           outputModalities: [text]
@@ -191,6 +194,7 @@ regionModelTypes:
           helper: Anthropic
           provider: custom:aiproxy-anthropic
           apiMode: anthropic_messages
+          kind: llm
           capabilities: [chat, reasoning, agent]
           inputModalities: [text]
           outputModalities: [text]
@@ -199,6 +203,7 @@ regionModelTypes:
           helper: Anthropic
           provider: custom:aiproxy-anthropic
           apiMode: anthropic_messages
+          kind: llm
           capabilities: [chat, reasoning, agent]
           inputModalities: [text]
           outputModalities: [text]
@@ -207,6 +212,7 @@ regionModelTypes:
           helper: Anthropic
           provider: custom:aiproxy-anthropic
           apiMode: anthropic_messages
+          kind: llm
           capabilities: [chat, reasoning, agent]
           inputModalities: [text]
           outputModalities: [text]
@@ -215,6 +221,7 @@ regionModelTypes:
           helper: GLM
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
@@ -223,6 +230,7 @@ regionModelTypes:
           helper: Kimi
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
@@ -231,6 +239,7 @@ regionModelTypes:
           helper: DeepSeek
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
@@ -239,6 +248,7 @@ regionModelTypes:
           helper: DeepSeek
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
@@ -250,6 +260,7 @@ regionModelTypes:
           helper: Google
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [vision, multimodal]
           inputModalities: [text, image]
           outputModalities: [text]
@@ -258,6 +269,7 @@ regionModelTypes:
           helper: Google
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [vision, multimodal]
           inputModalities: [text, image]
           outputModalities: [text]
@@ -266,6 +278,7 @@ regionModelTypes:
           helper: Google
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [vision, multimodal]
           inputModalities: [text, image]
           outputModalities: [text]
@@ -274,6 +287,7 @@ regionModelTypes:
           helper: OpenAI
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [vision, multimodal]
           inputModalities: [text, image]
           outputModalities: [text]
@@ -284,7 +298,8 @@ regionModelTypes:
           label: Gemini 3.1 Flash Image Preview
           helper: Google · Nano Banana 2
           provider: custom:aiproxy-chat
-          apiMode: openai_compatible
+          apiMode: image_generation
+          kind: image_generation
           capabilities: [image_generation]
           inputModalities: [text, image]
           outputModalities: [image]
@@ -292,7 +307,8 @@ regionModelTypes:
           label: Gemini 3 Pro Image Preview
           helper: Google · Nano Banana Pro
           provider: custom:aiproxy-chat
-          apiMode: openai_compatible
+          apiMode: image_generation
+          kind: image_generation
           capabilities: [image_generation]
           inputModalities: [text, image]
           outputModalities: [image]
@@ -300,26 +316,32 @@ regionModelTypes:
           label: GPT Image 2
           helper: OpenAI
           provider: custom:aiproxy-chat
-          apiMode: openai_compatible
+          apiMode: image_generation
+          kind: image_generation
           capabilities: [image_generation]
           inputModalities: [text, image]
           outputModalities: [image]
-    - key: audio
-      label: 音频模型
+    - key: asr
+      label: 语音识别模型
       models:
         - value: gpt-4o-mini-transcribe
           label: GPT-4o Mini Transcribe
           helper: OpenAI · ASR
           provider: custom:aiproxy-chat
-          apiMode: openai_compatible
+          apiMode: audio_transcriptions
+          kind: asr
           capabilities: [audio, speech_to_text]
           inputModalities: [audio]
           outputModalities: [text]
+    - key: tts
+      label: 语音合成模型
+      models:
         - value: gpt-4o-mini-tts
           label: GPT-4o Mini TTS
           helper: OpenAI · TTS
           provider: custom:aiproxy-chat
-          apiMode: openai_compatible
+          apiMode: audio_speech
+          kind: tts
           capabilities: [audio, text_to_speech]
           inputModalities: [text]
           outputModalities: [audio]
@@ -330,7 +352,8 @@ regionModelTypes:
           label: Text Embedding 3 Large
           helper: OpenAI
           provider: custom:aiproxy-chat
-          apiMode: openai_compatible
+          apiMode: embeddings
+          kind: embedding
           capabilities: [embedding]
           inputModalities: [text]
           outputModalities: [embedding]
@@ -338,7 +361,8 @@ regionModelTypes:
           label: Text Embedding 3 Small
           helper: OpenAI
           provider: custom:aiproxy-chat
-          apiMode: openai_compatible
+          apiMode: embeddings
+          kind: embedding
           capabilities: [embedding]
           inputModalities: [text]
           outputModalities: [embedding]
@@ -351,6 +375,7 @@ regionModelTypes:
           helper: GLM
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
@@ -359,6 +384,7 @@ regionModelTypes:
           helper: Kimi
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
@@ -367,6 +393,7 @@ regionModelTypes:
           helper: DeepSeek
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
@@ -375,6 +402,7 @@ regionModelTypes:
           helper: DeepSeek
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
@@ -383,6 +411,7 @@ regionModelTypes:
           helper: GLM
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
@@ -394,6 +423,7 @@ regionModelTypes:
           helper: Qwen
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [vision, multimodal]
           inputModalities: [text, image]
           outputModalities: [text]
@@ -402,6 +432,7 @@ regionModelTypes:
           helper: Qwen
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [vision, multimodal]
           inputModalities: [text, image]
           outputModalities: [text]
@@ -410,6 +441,7 @@ regionModelTypes:
           helper: GLM
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [vision, multimodal]
           inputModalities: [text, image]
           outputModalities: [text]
@@ -418,6 +450,7 @@ regionModelTypes:
           helper: Kimi
           provider: custom:aiproxy-chat
           apiMode: chat_completions
+          kind: llm
           capabilities: [vision, multimodal]
           inputModalities: [text, image]
           outputModalities: [text]
@@ -428,7 +461,8 @@ regionModelTypes:
           label: Qwen Image 2.0 Pro
           helper: Qwen
           provider: custom:aiproxy-chat
-          apiMode: openai_compatible
+          apiMode: image_generation
+          kind: image_generation
           capabilities: [image_generation]
           inputModalities: [text, image]
           outputModalities: [image]
@@ -436,26 +470,32 @@ regionModelTypes:
           label: Qwen Image 2.0
           helper: Qwen
           provider: custom:aiproxy-chat
-          apiMode: openai_compatible
+          apiMode: image_generation
+          kind: image_generation
           capabilities: [image_generation]
           inputModalities: [text, image]
           outputModalities: [image]
-    - key: audio
-      label: 音频模型
+    - key: asr
+      label: 语音识别模型
       models:
         - value: qwen3-asr-flash
           label: Qwen3 ASR Flash
           helper: Qwen · ASR
           provider: custom:aiproxy-chat
-          apiMode: openai_compatible
+          apiMode: audio_transcriptions
+          kind: asr
           capabilities: [audio, speech_to_text]
           inputModalities: [audio]
           outputModalities: [text]
+    - key: tts
+      label: 语音合成模型
+      models:
         - value: qwen3-tts-flash
           label: Qwen3 TTS Flash
           helper: Qwen · TTS
           provider: custom:aiproxy-chat
-          apiMode: openai_compatible
+          apiMode: audio_speech
+          kind: tts
           capabilities: [audio, text_to_speech]
           inputModalities: [text]
           outputModalities: [audio]
@@ -466,7 +506,8 @@ regionModelTypes:
           label: Text Embedding V4
           helper: Qwen
           provider: custom:aiproxy-chat
-          apiMode: openai_compatible
+          apiMode: embeddings
+          kind: embedding
           capabilities: [embedding]
           inputModalities: [text]
           outputModalities: [embedding]

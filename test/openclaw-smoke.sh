@@ -94,7 +94,7 @@ docker exec -e HOME=/root "$CONTAINER" ai-agent-switch provider init \
   --name "AI Proxy" \
   --base-url http://host.docker.internal:15721/v1 \
   --api-key-env AIPROXY_API_KEY \
-  --model glm-4.6:chat_completions \
+  --model glm-4.6:chat_completions:llm \
   --default-model glm-4.6 \
   --json >/dev/null
 docker exec -e HOME=/root "$CONTAINER" ai-agent-switch client configure \
