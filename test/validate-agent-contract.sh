@@ -611,6 +611,26 @@ forbidden_files=(config.sh config.json deploy.yaml bootstrap.sh healthcheck.sh)
 entrypoint_ref="$(mktemp)"
 trap 'rm -f "$entrypoint_ref"' EXIT
 cat agents/_template/entrypoint.sh >"$entrypoint_ref"
+grep -F 'AI_AGENT_SWITCH_INSTALL_URL="${AI_AGENT_SWITCH_INSTALL_URL:-https://raw.githubusercontent.com/sealos-apps/ai-agent-switch/main/install.sh}"' "$entrypoint_ref" >/dev/null || \
+  fail "agents/_template/entrypoint.sh must define the ai-agent-switch installer URL"
+python3 - "$entrypoint_ref" <<'PY'
+from pathlib import Path
+import sys
+
+text = Path(sys.argv[1]).read_text(encoding="utf-8")
+call = text.find("  refresh_ai_agent_switch\n")
+exec_call = text.find('  exec "$AGENT_START" "$@"')
+if call < 0 or exec_call < 0 or call > exec_call:
+    raise SystemExit("agents/_template/entrypoint.sh must call refresh_ai_agent_switch before execing the agent")
+PY
+grep -F 'curl --connect-timeout 5 --max-time 30 --retry 2 --retry-delay 1 -fsSL "$AI_AGENT_SWITCH_INSTALL_URL" -o "$tmp_script" && sh "$tmp_script" --install-dir "$install_dir"' "$entrypoint_ref" >/dev/null || \
+  fail "agents/_template/entrypoint.sh must download the ai-agent-switch installer with bounded retries before executing it"
+grep -F 'ln -sf "${install_dir}/ai-agent-switch" /usr/local/bin/ai-agent-switch || true' "$entrypoint_ref" >/dev/null || \
+  fail "agents/_template/entrypoint.sh must not block startup when refreshing the global ai-agent-switch symlink fails"
+grep -F 'rm -f "$tmp_script" || true' "$entrypoint_ref" >/dev/null || \
+  fail "agents/_template/entrypoint.sh must not block startup when cleaning up the ai-agent-switch installer fails"
+grep -F 'ai-agent-switch refresh failed; using bundled version' "$entrypoint_ref" >/dev/null || \
+  fail "agents/_template/entrypoint.sh must keep starting with the bundled ai-agent-switch when refresh fails"
 
 agents=()
 while IFS= read -r agent_dir; do
