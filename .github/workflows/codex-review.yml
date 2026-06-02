@@ -1,0 +1,37 @@
+name: Codex Review
+
+on:
+  pull_request_target:
+    branches:
+      - master
+    types:
+      - opened
+      - synchronize
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: codex-review-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review-latest-commit:
+    if: contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR", "CONTRIBUTOR"]'), github.event.pull_request.author_association)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Review latest commit with Codex
+        uses: nightwhite/codex-reviewer@72bff7a9a0916ab143ebc329028764f4fb45c840
+        with:
+          github-token: ${{ github.token }}
+          provider-base-url: ${{ secrets.CODEX_PROVIDER_BASE_URL }}
+          provider-api-key: ${{ secrets.CODEX_PROVIDER_API_KEY }}
+          model: gpt-5.5
+          effort: xhigh
