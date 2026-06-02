@@ -7,7 +7,6 @@ OPENCLAW_CONFIG_PATH="${OPENCLAW_CONFIG_PATH:-${OPENCLAW_STATE_DIR}/openclaw.jso
 OPENCLAW_WORKSPACE="${OPENCLAW_WORKSPACE:-/workspace}"
 OPENCLAW_DEFAULTS_DIR="${OPENCLAW_DEFAULTS_DIR:-/opt/agent/defaults/openclaw}"
 AI_AGENT_SWITCH_INSTALL_URL="${AI_AGENT_SWITCH_INSTALL_URL:-https://raw.githubusercontent.com/sealos-apps/ai-agent-switch/main/install.sh}"
-AI_AGENT_SWITCH_LATEST_RELEASE_URL="${AI_AGENT_SWITCH_LATEST_RELEASE_URL:-https://api.github.com/repos/sealos-apps/ai-agent-switch/releases/latest}"
 
 fail() {
   printf '[ERROR] %s\n' "$*" >&2
@@ -20,17 +19,10 @@ install_openclaw() {
 }
 
 install_ai_agent_switch() {
-  local version
   local install_dir
   install_dir="/opt/ai-agent-switch/bin"
-  version="$(
-    curl -fsSL "$AI_AGENT_SWITCH_LATEST_RELEASE_URL" \
-      | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
-      | head -n 1
-  )"
-  [[ -n "$version" ]] || fail "failed to resolve latest ai-agent-switch release"
 
-  curl -fsSL "$AI_AGENT_SWITCH_INSTALL_URL" | sh -s -- "$version" --install-dir "$install_dir"
+  curl -fsSL "$AI_AGENT_SWITCH_INSTALL_URL" | INSTALL_DIR="$install_dir" sh
   ln -sf "${install_dir}/ai-agent-switch" /usr/local/bin/ai-agent-switch
   command -v ai-agent-switch >/dev/null 2>&1 || fail "ai-agent-switch was not installed"
 }

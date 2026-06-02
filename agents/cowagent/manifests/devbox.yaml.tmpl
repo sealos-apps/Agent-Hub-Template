@@ -58,10 +58,6 @@ spec:
         value: {{ quote .Agent.ModelAPIKey }}
       - name: "OPENAI_BASE_URL"
         value: {{ quote .Agent.ModelBaseURL }}
-      - name: "model"
-        value: {{ quote .Agent.Model }}
-      - name: "bot_type"
-        value: "openai"
       - name: "AGENT_MODEL_PROVIDER"
         value: {{ quote .Agent.ModelProvider }}
       - name: "AGENT_MODEL_BASEURL"
@@ -70,6 +66,8 @@ spec:
         value: {{ quote .Agent.ModelAPIKey }}
       - name: "AGENT_MODEL"
         value: {{ quote .Agent.Model }}
+      - name: "AGENT_MODEL_API_MODE"
+        value: {{ quote .Agent.ModelAPIMode }}
       - name: "AGENT_TEMPLATE_ID"
         value: {{ quote .Agent.TemplateID }}
       - name: "AGENT_WORKDIR"

@@ -7,3 +7,5 @@
 helloagents/
 reference/
 test/*-local/
+
+.sealos/

@@ -662,12 +662,18 @@ for agent_dir in "${agents[@]}"; do
   if [[ "$agent_dir" != "agents/_template" ]]; then
     grep -F 'raw.githubusercontent.com/sealos-apps/ai-agent-switch/main/install.sh' "$agent_dir/install.sh" >/dev/null || \
       fail "$agent_dir/install.sh must install ai-agent-switch through the official curl installer"
-    grep -F 'AI_AGENT_SWITCH_LATEST_RELEASE_URL' "$agent_dir/install.sh" >/dev/null || \
-      fail "$agent_dir/install.sh must resolve the latest ai-agent-switch release"
+    if grep -F 'AI_AGENT_SWITCH_LATEST_RELEASE_URL' "$agent_dir/install.sh" >/dev/null; then
+      fail "$agent_dir/install.sh must let the official installer resolve the latest ai-agent-switch release"
+    fi
     grep -F 'install_dir="/opt/ai-agent-switch/bin"' "$agent_dir/install.sh" >/dev/null || \
       fail "$agent_dir/install.sh must install ai-agent-switch into /opt/ai-agent-switch/bin"
+    grep -E 'INSTALL_DIR=["'\'']?\$install_dir["'\'']?[[:space:]]+sh' "$agent_dir/install.sh" >/dev/null || \
+      fail "$agent_dir/install.sh must install ai-agent-switch latest through the installer environment"
     grep -F 'ln -sf "${install_dir}/ai-agent-switch" /usr/local/bin/ai-agent-switch' "$agent_dir/install.sh" >/dev/null || \
       fail "$agent_dir/install.sh must expose only the ai-agent-switch command globally"
+    if grep -E 'sh[[:space:]]+-s[[:space:]]+--[[:space:]]+["'\'']?\$\{?version\}?["'\'']?' "$agent_dir/install.sh" >/dev/null; then
+      fail "$agent_dir/install.sh must not pass an explicit ai-agent-switch version to the installer"
+    fi
     if grep -F -- '--install-dir /usr/local/bin' "$agent_dir/install.sh" >/dev/null; then
       fail "$agent_dir/install.sh must not install ai-agent-switch shortcuts directly into /usr/local/bin"
     fi
@@ -683,6 +689,13 @@ for agent_dir in "${agents[@]}"; do
     if grep -F 'agent-hub init' "$agent_dir/install.sh" >/dev/null; then
       fail "$agent_dir/install.sh must not run ai-agent-switch agent-hub init during build or startup"
     fi
+  fi
+  if [[ "$agent_dir" == "agents/cowagent" ]]; then
+    if grep -E '^[[:space:]]*-?[[:space:]]*name:[[:space:]]*(["'\''](model|bot_type)["'\'']|model|bot_type)([[:space:]]*(#.*)?$)' "$agent_dir/manifests/devbox.yaml.tmpl" >/dev/null; then
+      fail "$agent_dir/manifests/devbox.yaml.tmpl must not pin CowAgent runtime model through env"
+    fi
+    grep -E '^[[:space:]]*-?[[:space:]]*name:[[:space:]]*(["'\'']AGENT_MODEL_API_MODE["'\'']|AGENT_MODEL_API_MODE)([[:space:]]*(#.*)?$)' "$agent_dir/manifests/devbox.yaml.tmpl" >/dev/null || \
+      fail "$agent_dir/manifests/devbox.yaml.tmpl must expose AGENT_MODEL_API_MODE for Agent Hub model sync"
   fi
   if [[ "$agent_dir" == "agents/openclaw" ]]; then
     grep -F 'openclaw@latest' "$agent_dir/install.sh" >/dev/null || \
