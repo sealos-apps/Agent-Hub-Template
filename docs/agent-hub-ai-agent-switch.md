@@ -143,6 +143,25 @@ apiMode: codex_responses
 kind: llm
 ```
 
+CowAgent 模板还必须为每个模型声明 `runtimeProvider`。它表示 Agent Hub 通过 AI-Proxy 同步后，CowAgent 内部应使用哪个原生 provider 配置：
+
+```yaml
+value: gemini-3.1-flash-image-preview
+label: Gemini 3.1 Flash Image Preview
+provider: custom:aiproxy-chat
+apiMode: image_generation
+kind: image_generation
+runtimeProvider: gemini
+```
+
+当前允许值：
+
+- `openai`：写入 CowAgent `openai` provider，使用 OpenAI-compatible `/v1`。
+- `gemini`：写入 CowAgent `gemini` provider，CowAgent 会在 base URL 后追加 Gemini 原生 `/v1beta/...` 路径。
+- `dashscope`：写入 CowAgent `dashscope` provider，CowAgent 会使用 DashScope 原生路径。
+
+`runtimeProvider` 只描述 agent 内部运行时格式，不改变 UI 中展示的 `provider`。同一个 AI-Proxy key 可以按运行时需要导出为 `OPEN_AI_API_KEY`、`GEMINI_API_KEY` 或 `DASHSCOPE_API_KEY`。
+
 当前模板里的默认值按 `defaultModels.<region>` 声明：
 
 | template id | region | slot | 默认模型 | provider | apiMode | kind |
@@ -162,16 +181,17 @@ Agent Hub 执行 `provider init` 时，参数来源固定如下：
 
 | `provider init` 参数 | 来源 |
 | --- | --- |
-| `--id` | 由模板 provider 映射而来；AIProxy 统一为 `aiproxy` |
-| `--name` | 由 provider 映射而来；AIProxy 统一为 `AI Proxy` |
-| `--base-url` | 创建页/设置页的 `baseURL` 字段，默认来自 Agent Hub 的 AIProxy baseURL 配置 |
-| `--api-key-env` | 模板 `modelIntegration.provider.apiKeyEnv`；Hermes/OpenClaw 为 `AGENT_MODEL_APIKEY`，CowAgent 为 `OPEN_AI_API_KEY` |
+| `--id` | 由模板 provider 映射而来；Hermes/OpenClaw 的 AIProxy 统一为 `aiproxy`，CowAgent 会按 `runtimeProvider` 拆成 `aiproxy-openai`、`aiproxy-gemini`、`aiproxy-dashscope` |
+| `--name` | 由 provider 映射而来；CowAgent runtime provider 分别为 `AI Proxy OpenAI`、`AI Proxy Gemini`、`AI Proxy DashScope` |
+| `--type` | CowAgent runtime provider 必须显式传入：`openai-chat-compatible`、`gemini` 或 `dashscope` |
+| `--base-url` | 创建页/设置页的 `baseURL` 字段，默认来自 Agent Hub 的 AIProxy baseURL 配置；CowAgent `openai` 使用 `/v1`，`gemini` 使用官方 `/v1beta`，`dashscope` 使用 AIProxy origin |
+| `--api-key-env` | 模板 `modelIntegration.provider.apiKeyEnv`；CowAgent runtime provider 会按原生 provider 映射成 `OPEN_AI_API_KEY`、`GEMINI_API_KEY`、`DASHSCOPE_API_KEY` |
 | `--model` | 当前 region 下同一个 provider id 可用的模型列表；每个模型用 `value`、`apiMode` 和 `kind` 组合成 `<value>:<apiMode>:<kind>`，并重复传多个 `--model` |
 | `--default-model` | 当前选中的模型 `value` |
 
 `provider init` 不读取模板文件，也不负责挑默认模型。Agent Hub 必须先从模板和用户选择里算出这些值，再把结果传给容器内的 `ai-agent-switch`。
 
-AIProxy 的 3 个模板 provider 最终都映射成 `aiproxy`，所以 `provider init` 应写入当前 region 下所有属于同一个 `aiproxy` provider 的可用模型，包括文本、图片、音频和向量模型，而不是只写入当前选中的一个模型。`--default-model` 才表示当前选中或默认使用的主模型。
+Hermes/OpenClaw 中 AIProxy 的 3 个模板 provider 最终都映射成 `aiproxy`，所以 `provider init` 应写入当前 region 下所有属于同一个 `aiproxy` provider 的可用模型。CowAgent 需要按 `runtimeProvider` 拆分 provider，否则 Gemini 生图会被写成 OpenAI Images API，Qwen 音频/向量也会走错原生配置。`--default-model` 只表示当前选中或默认使用的主模型。
 
 ## 初次部署流程
 
@@ -235,6 +255,49 @@ ai-agent-switch client configure \
 
 多模型 agent 必须为每个本次保存的 slot 传入一个 `--slot <slot>=<provider>/<model>` 参数。
 
+CowAgent 多 runtime provider 示例：
+
+```bash
+export OPEN_AI_API_KEY="$AGENT_MODEL_APIKEY"
+export GEMINI_API_KEY="$AGENT_MODEL_APIKEY"
+export DASHSCOPE_API_KEY="$AGENT_MODEL_APIKEY"
+
+ai-agent-switch provider init \
+  --id aiproxy-openai \
+  --name "AI Proxy OpenAI" \
+  --type openai-chat-compatible \
+  --base-url "https://aiproxy.usw-1.sealos.io/v1" \
+  --api-key-env OPEN_AI_API_KEY \
+  --model "gpt-5.4:chat_completions:llm" \
+  --default-model "gpt-5.4" \
+  --json
+
+ai-agent-switch provider init \
+  --id aiproxy-gemini \
+  --name "AI Proxy Gemini" \
+  --type gemini \
+  --base-url "https://aiproxy.usw-1.sealos.io/v1beta" \
+  --api-key-env GEMINI_API_KEY \
+  --model "gemini-3.1-flash-image-preview:image_generation:image_generation" \
+  --json
+
+ai-agent-switch provider init \
+  --id aiproxy-dashscope \
+  --name "AI Proxy DashScope" \
+  --type dashscope \
+  --base-url "https://aiproxy.usw-1.sealos.io" \
+  --api-key-env DASHSCOPE_API_KEY \
+  --model "qwen-image-2.0-pro:image_generation:image_generation" \
+  --json
+
+ai-agent-switch client configure \
+  --client cowagent \
+  --slot main=aiproxy-openai/gpt-5.4 \
+  --slot image=aiproxy-gemini/gemini-3.1-flash-image-preview \
+  -y \
+  --json
+```
+
 每次切换都执行 `provider init + client configure`，保持幂等。不要只执行 `client configure`，因为新模型可能还没有写入 provider 的模型列表。
 
 切换模型不依赖镜像重建，也不依赖 agent 默认启动脚本重新初始化。Agent Hub 后端应在运行中的 Devbox 容器内执行上面的命令。
@@ -244,7 +307,7 @@ ai-agent-switch client configure \
 Agent Hub 配置页不从镜像内读取模型列表，而是读取模板元数据：
 
 - `settings`：定义配置页里的字段、展示方式和是否需要重新部署。
-- `regionModelPresets`：定义不同区域可选的 provider、baseURL、模型、`apiMode` 和 `kind`。
+- `regionModelPresets`：定义不同区域可选的 provider、baseURL、模型、`apiMode`、`kind` 和 CowAgent `runtimeProvider`。
 - `presentation`、`access`、`actions`：定义模板在 Agent Hub 里的展示、访问入口和操作按钮。
 
 模型相关字段变更后，Agent Hub 应按「后续切换模型流程」同步到运行中的 agent，而不是要求镜像启动脚本自行解析模板。
@@ -272,12 +335,15 @@ ai-agent-switch client show <client> --json
 
 ## CowAgent 注意事项
 
-CowAgent 原生运行时仍读取 `OPEN_AI_API_KEY` 和 `OPEN_AI_API_BASE`。模板需要继续注入 CowAgent 原生 env，同时也注入 Agent Hub 标准 env：
+CowAgent 原生运行时会按 provider 读取不同 env。Agent Hub 同步时会把同一个 AI-Proxy key 按 runtime provider 导出成不同 env 名：
 
 - `OPEN_AI_API_KEY`
-- `OPEN_AI_API_BASE`
+- `GEMINI_API_KEY`
+- `DASHSCOPE_API_KEY`
 - `AGENT_MODEL_APIKEY`
 - `AGENT_MODEL_BASEURL`
+
+Agent Hub 初始化 provider 时，OpenAI runtime provider 使用 AIProxy `/v1`，Gemini runtime provider 使用 AIProxy `/v1beta`，DashScope runtime provider 使用 AIProxy origin。`ai-agent-switch` 写入 CowAgent 配置时会把 AIProxy Gemini `/v1beta` 转成 CowAgent 期望的 origin，因为 CowAgent 源码会自己追加 `/v1beta/models/...`。
 
 `ai-agent-switch client configure --client cowagent ...` 只保证同步 CowAgent 当前 adapter 已支持的 `main` 原生字段。当前 adapter 已按 `kind` 支持 CowAgent 的 `main`、`vision`、`image`、`asr`、`tts` 和 `embedding` slot，并写入 CowAgent 对应原生配置字段。运行时 env 仍需要由模板保证。
 

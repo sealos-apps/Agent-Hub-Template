@@ -199,6 +199,8 @@ allowed_model_kinds = {
     "embedding",
 }
 
+allowed_runtime_providers = {"openai", "gemini", "dashscope"}
+
 api_mode_kinds = {
     "chat_completions": {"llm", "vision"},
     "openai_compatible": {"llm", "vision"},
@@ -230,6 +232,14 @@ def validate_model_kind(template_path, location, item, api_mode):
     allowed_kinds = api_mode_kinds.get(api_mode, set())
     if kind not in allowed_kinds:
         raise SystemExit(f"{template_path}: {location} kind {kind} is incompatible with apiMode {api_mode}")
+
+def validate_runtime_provider(template_path, location, item, required):
+    value = item.get("runtimeProvider")
+    runtime_provider = str(value).strip() if value is not None else ""
+    if required and not runtime_provider:
+        raise SystemExit(f"{template_path}: {location} must include runtimeProvider")
+    if runtime_provider and runtime_provider not in allowed_runtime_providers:
+        raise SystemExit(f"{template_path}: {location} runtimeProvider must be one of {', '.join(sorted(allowed_runtime_providers))}")
 
 required = [
     "id",
@@ -315,6 +325,7 @@ if presets is not None:
             if api_mode not in allowed_api_modes:
                 raise SystemExit(f"{template_path}: regionModelPresets.{region}.{item.get('value')} apiMode must be one of {', '.join(sorted(allowed_api_modes))}")
             validate_model_kind(template_path, f"regionModelPresets.{region}.{item.get('value')}", item, api_mode)
+            validate_runtime_provider(template_path, f"regionModelPresets.{region}.{item.get('value')}", item, agent_id == "cowagent")
 
 if model_types is not None:
     if not isinstance(model_types, dict):
@@ -343,6 +354,7 @@ if model_types is not None:
                 if api_mode not in allowed_api_modes:
                     raise SystemExit(f"{template_path}: regionModelTypes.{region}.{group.get('key')}.{item.get('value')} apiMode must be one of {', '.join(sorted(allowed_api_modes))}")
                 validate_model_kind(template_path, f"regionModelTypes.{region}.{group.get('key')}.{item.get('value')}", item, api_mode)
+                validate_runtime_provider(template_path, f"regionModelTypes.{region}.{group.get('key')}.{item.get('value')}", item, agent_id == "cowagent")
 
 integration = template.get("modelIntegration")
 if not isinstance(integration, dict):

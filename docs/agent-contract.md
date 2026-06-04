@@ -162,6 +162,9 @@ Model field ownership:
   referenced by `modelIntegration.slots[].modelTypes`.
 - `regionModelPresets`: owns flattened provider/model presets consumed by Agent
   Hub compatibility code and UI options.
+- `runtimeProvider`: for CowAgent model presets, declares the native provider
+  that CowAgent should receive after Agent Hub syncs through `ai-agent-switch`.
+  Current values are `openai`, `gemini`, and `dashscope`.
 - `settings`: owns non-model runtime settings; do not add new
   `settings.agent.provider`, `settings.agent.model`, or
   `settings.agent.baseURL` fields for model selection.

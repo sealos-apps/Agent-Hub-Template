@@ -168,6 +168,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           kind: llm
+          runtimeProvider: openai
           capabilities: [chat, reasoning, agent]
           inputModalities: [text]
           outputModalities: [text]
@@ -177,6 +178,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           kind: llm
+          runtimeProvider: openai
           capabilities: [chat, reasoning, agent]
           inputModalities: [text]
           outputModalities: [text]
@@ -186,6 +188,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           kind: llm
+          runtimeProvider: openai
           capabilities: [chat, reasoning, agent]
           inputModalities: [text]
           outputModalities: [text]
@@ -195,6 +198,7 @@ regionModelTypes:
           provider: custom:aiproxy-anthropic
           apiMode: anthropic_messages
           kind: llm
+          runtimeProvider: openai
           capabilities: [chat, reasoning, agent]
           inputModalities: [text]
           outputModalities: [text]
@@ -204,6 +208,7 @@ regionModelTypes:
           provider: custom:aiproxy-anthropic
           apiMode: anthropic_messages
           kind: llm
+          runtimeProvider: openai
           capabilities: [chat, reasoning, agent]
           inputModalities: [text]
           outputModalities: [text]
@@ -213,6 +218,7 @@ regionModelTypes:
           provider: custom:aiproxy-anthropic
           apiMode: anthropic_messages
           kind: llm
+          runtimeProvider: openai
           capabilities: [chat, reasoning, agent]
           inputModalities: [text]
           outputModalities: [text]
@@ -222,6 +228,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           kind: llm
+          runtimeProvider: openai
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
@@ -231,6 +238,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           kind: llm
+          runtimeProvider: openai
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
@@ -240,6 +248,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           kind: llm
+          runtimeProvider: openai
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
@@ -249,6 +258,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           kind: llm
+          runtimeProvider: openai
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
@@ -261,6 +271,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           kind: llm
+          runtimeProvider: openai
           capabilities: [vision, multimodal]
           inputModalities: [text, image]
           outputModalities: [text]
@@ -270,6 +281,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           kind: llm
+          runtimeProvider: openai
           capabilities: [vision, multimodal]
           inputModalities: [text, image]
           outputModalities: [text]
@@ -279,6 +291,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           kind: llm
+          runtimeProvider: openai
           capabilities: [vision, multimodal]
           inputModalities: [text, image]
           outputModalities: [text]
@@ -288,6 +301,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           kind: llm
+          runtimeProvider: openai
           capabilities: [vision, multimodal]
           inputModalities: [text, image]
           outputModalities: [text]
@@ -300,6 +314,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: image_generation
           kind: image_generation
+          runtimeProvider: gemini
           capabilities: [image_generation]
           inputModalities: [text, image]
           outputModalities: [image]
@@ -309,6 +324,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: image_generation
           kind: image_generation
+          runtimeProvider: gemini
           capabilities: [image_generation]
           inputModalities: [text, image]
           outputModalities: [image]
@@ -318,6 +334,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: image_generation
           kind: image_generation
+          runtimeProvider: openai
           capabilities: [image_generation]
           inputModalities: [text, image]
           outputModalities: [image]
@@ -330,6 +347,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: audio_transcriptions
           kind: asr
+          runtimeProvider: openai
           capabilities: [audio, speech_to_text]
           inputModalities: [audio]
           outputModalities: [text]
@@ -342,6 +360,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: audio_speech
           kind: tts
+          runtimeProvider: openai
           capabilities: [audio, text_to_speech]
           inputModalities: [text]
           outputModalities: [audio]
@@ -354,6 +373,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: embeddings
           kind: embedding
+          runtimeProvider: openai
           capabilities: [embedding]
           inputModalities: [text]
           outputModalities: [embedding]
@@ -363,6 +383,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: embeddings
           kind: embedding
+          runtimeProvider: openai
           capabilities: [embedding]
           inputModalities: [text]
           outputModalities: [embedding]
@@ -376,6 +397,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           kind: llm
+          runtimeProvider: openai
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
@@ -385,6 +407,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           kind: llm
+          runtimeProvider: openai
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
@@ -394,6 +417,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           kind: llm
+          runtimeProvider: openai
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
@@ -403,6 +427,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           kind: llm
+          runtimeProvider: openai
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
@@ -412,6 +437,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           kind: llm
+          runtimeProvider: openai
           capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
@@ -424,6 +450,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           kind: llm
+          runtimeProvider: openai
           capabilities: [vision, multimodal]
           inputModalities: [text, image]
           outputModalities: [text]
@@ -433,6 +460,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           kind: llm
+          runtimeProvider: openai
           capabilities: [vision, multimodal]
           inputModalities: [text, image]
           outputModalities: [text]
@@ -442,6 +470,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           kind: llm
+          runtimeProvider: openai
           capabilities: [vision, multimodal]
           inputModalities: [text, image]
           outputModalities: [text]
@@ -451,6 +480,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           kind: llm
+          runtimeProvider: openai
           capabilities: [vision, multimodal]
           inputModalities: [text, image]
           outputModalities: [text]
@@ -463,6 +493,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: image_generation
           kind: image_generation
+          runtimeProvider: dashscope
           capabilities: [image_generation]
           inputModalities: [text, image]
           outputModalities: [image]
@@ -472,6 +503,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: image_generation
           kind: image_generation
+          runtimeProvider: dashscope
           capabilities: [image_generation]
           inputModalities: [text, image]
           outputModalities: [image]
@@ -484,6 +516,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: audio_transcriptions
           kind: asr
+          runtimeProvider: dashscope
           capabilities: [audio, speech_to_text]
           inputModalities: [audio]
           outputModalities: [text]
@@ -496,6 +529,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: audio_speech
           kind: tts
+          runtimeProvider: dashscope
           capabilities: [audio, text_to_speech]
           inputModalities: [text]
           outputModalities: [audio]
@@ -508,6 +542,7 @@ regionModelTypes:
           provider: custom:aiproxy-chat
           apiMode: embeddings
           kind: embedding
+          runtimeProvider: dashscope
           capabilities: [embedding]
           inputModalities: [text]
           outputModalities: [embedding]
