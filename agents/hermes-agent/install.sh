@@ -8,7 +8,6 @@ HERMES_VENV="${HERMES_VENV:-/opt/hermes/venv}"
 HERMES_HOME="${HERMES_HOME:-/root/.hermes}"
 HERMES_DEFAULTS_DIR="${HERMES_DEFAULTS_DIR:-/opt/agent/defaults/hermes}"
 UV_BIN="${UV_BIN:-/usr/local/bin/uv}"
-AI_AGENT_SWITCH_INSTALL_URL="${AI_AGENT_SWITCH_INSTALL_URL:-https://raw.githubusercontent.com/sealos-apps/ai-agent-switch/main/install.sh}"
 
 fail() {
   printf '[ERROR] %s\n' "$*" >&2
@@ -22,12 +21,27 @@ install_system_packages() {
 }
 
 install_ai_agent_switch() {
-  local install_dir
+  local install_dir tmp_dir archive_path asset_url platform
   install_dir="/opt/ai-agent-switch/bin"
+  tmp_dir="$(mktemp -d)"
+  archive_path="${tmp_dir}/ai-agent-switch-linux-x64.tar.gz"
+  asset_url="https://github.com/sealos-apps/ai-agent-switch/releases/latest/download/ai-agent-switch-linux-x64.tar.gz"
+  platform="linux-x64"
 
-  curl -fsSL "$AI_AGENT_SWITCH_INSTALL_URL" | INSTALL_DIR="$install_dir" sh
-  ln -sf "${install_dir}/ai-agent-switch" /usr/local/bin/ai-agent-switch
-  command -v ai-agent-switch >/dev/null 2>&1 || fail "ai-agent-switch was not installed"
+  [[ "$(uname -m)" == "x86_64" ]] || fail "ai-agent-switch linux-x64 release requires x86_64"
+
+  (
+    set -euo pipefail
+    trap 'rm -rf "$tmp_dir"' EXIT
+    curl --connect-timeout 10 --max-time 120 --retry 2 --retry-delay 1 -fsSL "$asset_url" -o "$archive_path"
+    mkdir -p "$install_dir"
+    tar -xzf "$archive_path" -C "$tmp_dir"
+    cp "${tmp_dir}/ai-agent-switch-${platform}/ai-agent-switch" "${install_dir}/ai-agent-switch"
+    cp "${tmp_dir}/ai-agent-switch-${platform}/as" "${install_dir}/as"
+    chmod 0755 "${install_dir}/ai-agent-switch" "${install_dir}/as"
+    ln -sf "${install_dir}/ai-agent-switch" /usr/local/bin/ai-agent-switch
+    ai-agent-switch --version >/dev/null 2>&1
+  ) || fail "ai-agent-switch was not installed"
 }
 
 install_hermes() {
