@@ -1,5 +1,5 @@
 ARG BASE_PLATFORM=linux/amd64
-ARG AGENT_BASE_IMAGE=ghcr.io/nightwhite/agent-devbox-base
+ARG AGENT_BASE_IMAGE=ghcr.io/sealos-apps/agent-devbox-base
 FROM --platform=${BASE_PLATFORM} ${AGENT_BASE_IMAGE}
 
 ENV AGENT_NAME=cowagent \

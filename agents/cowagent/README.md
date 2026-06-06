@@ -26,7 +26,7 @@ This agent follows the shared Agent Hub runtime contract:
 - `entrypoint.sh`: shared Agent Hub command router
 - `template.yaml` and `manifests/`: Agent Hub deployment template
 
-Agent Hub master image: `ghcr.io/nightwhite/cowagent:master`.
+Agent Hub master image: `ghcr.io/sealos-apps/cowagent:master`.
 
 ## Startup behavior
 
@@ -97,7 +97,7 @@ Example:
 ```bash
 docker build \
   --build-arg BASE_PLATFORM=linux/amd64 \
-  --build-arg AGENT_BASE_IMAGE=ghcr.io/nightwhite/agent-devbox-base \
+  --build-arg AGENT_BASE_IMAGE=ghcr.io/sealos-apps/agent-devbox-base \
   -f agents/cowagent/Dockerfile \
   -t agent-hub/cowagent:dev .
 ```

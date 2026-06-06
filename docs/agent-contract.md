@@ -43,7 +43,7 @@ Each agent directory must not contain:
 The Dockerfile must:
 
 - define `ARG BASE_PLATFORM=linux/amd64`
-- define `ARG AGENT_BASE_IMAGE=ghcr.io/nightwhite/agent-devbox-base`
+- define `ARG AGENT_BASE_IMAGE=ghcr.io/sealos-apps/agent-devbox-base`
 - use `FROM --platform=${BASE_PLATFORM} ${AGENT_BASE_IMAGE}`
 - preserve `ENTRYPOINT ["/init", "/opt/agent/entrypoint.sh"]`
 - use `CMD ["start"]`

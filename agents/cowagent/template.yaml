@@ -2,7 +2,7 @@ id: cowagent
 name: CowAgent
 shortName: CowAgent
 description: CowAgent Web console assistant with skills, memory, tools, and multi-channel integrations.
-image: ghcr.io/nightwhite/cowagent:latest
+image: ghcr.io/sealos-apps/cowagent:latest
 port: 9899
 defaultArgs:
   - start

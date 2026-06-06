@@ -124,8 +124,8 @@ validate_dockerfile_contract() {
 
   grep -F 'ARG BASE_PLATFORM=linux/amd64' "$file" >/dev/null || \
     fail "$file must define ARG BASE_PLATFORM=linux/amd64"
-  grep -F 'ARG AGENT_BASE_IMAGE=ghcr.io/nightwhite/agent-devbox-base' "$file" >/dev/null || \
-    fail "$file must define ARG AGENT_BASE_IMAGE=ghcr.io/nightwhite/agent-devbox-base"
+  grep -F 'ARG AGENT_BASE_IMAGE=ghcr.io/sealos-apps/agent-devbox-base' "$file" >/dev/null || \
+    fail "$file must define ARG AGENT_BASE_IMAGE=ghcr.io/sealos-apps/agent-devbox-base"
   grep -F 'FROM --platform=${BASE_PLATFORM} ${AGENT_BASE_IMAGE}' "$file" >/dev/null || \
     fail "$file must use the shared Agent Hub Devbox base image"
   grep -Eq '^[[:space:]]*ENTRYPOINT[[:space:]]+\[[[:space:]]*"/init"[[:space:]]*,[[:space:]]*"/opt/agent/entrypoint.sh"[[:space:]]*\]' "$file" || \

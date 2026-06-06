@@ -6,7 +6,7 @@ CONTAINER="${CONTAINER:-openclaw-smoke-$RANDOM}"
 HOST_PORT="${HOST_PORT:-28789}"
 DOCKER_PLATFORM="${DOCKER_PLATFORM:-linux/amd64}"
 OPENCLAW_GATEWAY_TOKEN="${OPENCLAW_GATEWAY_TOKEN:-sk-openclaw-smoke-local-token}"
-AGENT_BASE_IMAGE="${AGENT_BASE_IMAGE:-ghcr.io/nightwhite/agent-devbox-base}"
+AGENT_BASE_IMAGE="${AGENT_BASE_IMAGE:-ghcr.io/sealos-apps/agent-devbox-base}"
 
 fail() {
   printf '[ERROR] %s\n' "$*" >&2

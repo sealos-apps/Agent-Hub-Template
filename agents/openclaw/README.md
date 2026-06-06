@@ -5,7 +5,7 @@ This directory packages the upstream [openclaw/openclaw](https://github.com/open
 The current implementation follows the shared Agent Hub runtime contract:
 
 - fixed entrypoint: `entrypoint.sh start`
-- built from `ghcr.io/nightwhite/agent-devbox-base`
+- built from `ghcr.io/sealos-apps/agent-devbox-base`
 - installs the latest `openclaw` through the official Linux install path
 - installs the latest standalone `ai-agent-switch` binary through its official curl installer
 - does not use `onboard --install-daemon` as the standard container startup path

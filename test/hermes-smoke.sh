@@ -6,7 +6,7 @@ CONTAINER="${CONTAINER:-hermes-smoke-$RANDOM}"
 HOST_PORT="${HOST_PORT:-28642}"
 DOCKER_PLATFORM="${DOCKER_PLATFORM:-linux/amd64}"
 HERMES_API_SERVER_KEY="${HERMES_API_SERVER_KEY:-hermes-smoke-local-token}"
-AGENT_BASE_IMAGE="${AGENT_BASE_IMAGE:-ghcr.io/nightwhite/agent-devbox-base}"
+AGENT_BASE_IMAGE="${AGENT_BASE_IMAGE:-ghcr.io/sealos-apps/agent-devbox-base}"
 
 fail() {
   printf '[ERROR] %s\n' "$*" >&2
