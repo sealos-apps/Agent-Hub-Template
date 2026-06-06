@@ -1,43 +1,43 @@
-# 本地 Smoke 测试
+# Local Smoke Tests
 
-## 本地依赖
+## Local Dependencies
 
-- `python3`: 用于 JSON 校验和部分 smoke 断言。
-- `python3` + `PyYAML` 或 `ruby`: 用于 YAML 语法校验。
-- `docker`: 用于构建和运行 Hermes/OpenClaw smoke 镜像。
-- `curl`: 用于 gateway 和 ccswitch HTTP 检查。
-- `ccswitch-smoke.sh` 还需要本机 ccswitch 监听 `127.0.0.1:15721`。
+- `python3`: JSON validation and selected smoke assertions.
+- `python3` + `PyYAML` or `ruby`: YAML syntax validation.
+- `docker`: building and running Hermes/OpenClaw smoke images.
+- `curl`: gateway and ccswitch HTTP checks.
+- `ccswitch-smoke.sh`: also requires a local ccswitch server listening on `127.0.0.1:15721`.
 
-如果本机没有 PyYAML，脚本会自动回退到 Ruby；两者都没有时，契约校验会明确失败。
+If PyYAML is not available, scripts fall back to Ruby. If neither dependency exists, contract validation fails with an explicit error.
 
-## 运行方式
+## Usage
 
-先跑静态契约校验：
+Run static contract validation first:
 
 ```bash
 bash test/validate-agent-contract.sh
 ```
 
-再按需跑真实镜像 smoke：
+Then run real image smoke tests as needed:
 
 ```bash
 bash test/hermes-smoke.sh
 bash test/openclaw-smoke.sh
 ```
 
-如果本机有 ccswitch 监听 `127.0.0.1:15721`，可以跑完整模型链路：
+If a local ccswitch server is listening on `127.0.0.1:15721`, run the full model path smoke test:
 
 ```bash
 bash test/ccswitch-smoke.sh
 ```
 
-这些脚本会：
+These scripts:
 
-- 构建镜像
-- 按默认 `start` 启动容器
-- 通过 `ai-agent-switch provider init` 和 `ai-agent-switch client configure` 初始化 smoke 测试所需模型配置
-- 通过 `ai-agent-switch client show <client> --json` 读取当前模型
-- 校验密钥通过环境变量引用，不写入明文 token
-- 校验配置文件已经被写入
-- 校验运行中的 gateway 仍然健康
-- `ccswitch-smoke.sh` 会额外验证 direct ccswitch、Hermes gateway、OpenClaw gateway 三条真实模型调用链路
+- build images
+- start containers with the default `start` command
+- initialize smoke-test model configuration through `ai-agent-switch provider init` and `ai-agent-switch client configure`
+- read current model state through `ai-agent-switch client show <client> --json`
+- verify API keys are referenced through environment variables instead of plaintext tokens
+- verify configuration files are written
+- verify the running gateway stays healthy
+- additionally validate direct ccswitch, Hermes gateway, and OpenClaw gateway model call paths in `ccswitch-smoke.sh`

@@ -587,23 +587,25 @@ validate_agent_hub_template_contract() {
 }
 
 validate_workflow_contracts() {
-  [[ -f .gitmodules ]] || fail ".gitmodules is required so Actions can fetch devbox-runtime"
-  grep -F '[submodule "devbox-runtime"]' .gitmodules >/dev/null || \
-    fail ".gitmodules must define devbox-runtime"
-  grep -F 'url = https://github.com/gitlayzer/devbox-runtime.git' .gitmodules >/dev/null || \
-    fail ".gitmodules must pin the devbox-runtime source repository"
-  grep -F 'submodules: recursive' .github/workflows/build.yml >/dev/null || \
-    fail ".github/workflows/build.yml must checkout devbox-runtime submodule before base builds"
-  grep -F 'submodules: recursive' .github/workflows/release.yml >/dev/null || \
-    fail ".github/workflows/release.yml must checkout devbox-runtime submodule before base builds"
-  grep -F 'or ".gitmodules" in changed_files' .github/workflows/build.yml >/dev/null || \
-    fail ".github/workflows/build.yml must rebuild agents when .gitmodules changes"
-  grep -F 'path == "devbox-runtime" or path.startswith("devbox-runtime/")' .github/workflows/build.yml >/dev/null || \
-    fail ".github/workflows/build.yml must rebuild agents when devbox-runtime changes"
-  grep -F 'COPY devbox-runtime/tooling/scripts' base/Dockerfile >/dev/null || \
-    fail "base/Dockerfile must copy devbox-runtime tooling scripts"
-  grep -F 'COPY devbox-runtime/tooling/docs' base/Dockerfile >/dev/null || \
-    fail "base/Dockerfile must copy devbox-runtime tooling docs"
+  if [[ -f .gitmodules ]] && grep -F '[submodule "devbox-runtime"]' .gitmodules >/dev/null; then
+    fail "devbox-runtime must not be required as a submodule for base image builds"
+  fi
+  [[ -f base/tooling/scripts/install-base-pkg-deb.sh ]] || \
+    fail "base/tooling/scripts/install-base-pkg-deb.sh is required for the self-contained base image"
+  [[ -f base/tooling/scripts/install-s6.sh ]] || \
+    fail "base/tooling/scripts/install-s6.sh is required for the self-contained base image"
+  [[ -f base/tooling/scripts/svc/startup/00-set-hostname.sh ]] || \
+    fail "base/tooling/scripts/svc/startup files are required for the self-contained base image"
+  [[ -f base/tooling/docs/README.s6-user-guide.en_US.md ]] || \
+    fail "base/tooling/docs must include the s6 user guide"
+  grep -F 'COPY base/tooling/scripts' base/Dockerfile >/dev/null || \
+    fail "base/Dockerfile must copy vendored base tooling scripts"
+  grep -F 'COPY base/tooling/docs' base/Dockerfile >/dev/null || \
+    fail "base/Dockerfile must copy vendored base tooling docs"
+  ! grep -F 'submodules: recursive' .github/workflows/build.yml >/dev/null || \
+    fail ".github/workflows/build.yml must not require submodule checkout for base builds"
+  ! grep -F 'submodules: recursive' .github/workflows/release.yml >/dev/null || \
+    fail ".github/workflows/release.yml must not require submodule checkout for base builds"
   grep -F 'echo "latest"' .github/workflows/release.yml >/dev/null || \
     fail ".github/workflows/release.yml must publish the latest agent image tag"
   grep -F 'trace_tag="build-$(date -u +%Y%m%d)-${short_sha}"' .github/workflows/release.yml >/dev/null || \

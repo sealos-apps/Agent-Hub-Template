@@ -1,25 +1,25 @@
-# OpenClaw Agent 镜像
+# OpenClaw Agent Image
 
-这个目录把官方 [openclaw/openclaw](https://github.com/openclaw/openclaw) 的容器接入方式收敛成 Sealos Devbox 可接入的标准镜像。
+This directory packages the upstream [openclaw/openclaw](https://github.com/openclaw/openclaw) container runtime as a standard Sealos Devbox-compatible image.
 
-当前实现遵守第一阶段标准：
+The current implementation follows the shared Agent Hub runtime contract:
 
-- 固定入口：`entrypoint.sh start`
-- 基于 `ghcr.io/nightwhite/agent-devbox-base` 构建
-- 通过官方 Linux 安装方式安装最新 `openclaw`
-- 通过官方 curl 安装脚本安装最新 `ai-agent-switch` standalone binary
-- 不把 `onboard --install-daemon` 当成容器标准启动方式
-- 容器里的标准长驻进程固定为 `openclaw gateway run`
-- 配置直接落到 OpenClaw 原生 `~/.openclaw/openclaw.json` 与 `~/.openclaw/.env`
+- fixed entrypoint: `entrypoint.sh start`
+- built from `ghcr.io/nightwhite/agent-devbox-base`
+- installs the latest `openclaw` through the official Linux install path
+- installs the latest standalone `ai-agent-switch` binary through its official curl installer
+- does not use `onboard --install-daemon` as the standard container startup path
+- standard long-running process is `openclaw gateway run`
+- configuration is written to native OpenClaw files: `~/.openclaw/openclaw.json` and `~/.openclaw/.env`
 
 ## Upstream Install
 
 - OpenClaw: `npm install -g openclaw@latest`
 - ai-agent-switch: `curl -fsSL https://raw.githubusercontent.com/sealos-apps/ai-agent-switch/main/install.sh | sh`
 
-## 运行方式
+## Runtime Usage
 
-### 默认启动
+### Default Startup
 
 ```bash
 docker run --rm \
@@ -28,7 +28,7 @@ docker run --rm \
   agent-hub/openclaw:dev
 ```
 
-等价于：
+Equivalent command:
 
 ```bash
 docker run --rm \
@@ -37,44 +37,44 @@ docker run --rm \
   agent-hub/openclaw:dev start
 ```
 
-默认启动必须通过运行时环境变量、Agent Hub 模板设置或 Kubernetes Secret 提供 `OPENCLAW_GATEWAY_TOKEN`。启动脚本会把这个值写入 `~/.openclaw/.env`，包括 `sk-` 前缀在内的完整 token 会被保留。
+Default startup requires `OPENCLAW_GATEWAY_TOKEN` from runtime environment variables, Agent Hub template settings, or a Kubernetes Secret. The startup script writes this value to `~/.openclaw/.env` and preserves the full token, including the `sk-` prefix.
 
-镜像内部固定执行：
+The image always starts:
 
 ```bash
 openclaw gateway run
 ```
 
-### 调试 shell
+### Debug Shell
 
 ```bash
 docker run --rm -it agent-hub/openclaw:dev shell
 ```
 
-### 原生 CLI 调试
+### Native CLI Debugging
 
 ```bash
 docker run --rm agent-hub/openclaw:dev run --help
 ```
 
-## 配置方式
+## Configuration
 
-OpenClaw 配置仍然写入原生配置文件：
+OpenClaw configuration is still written to native configuration files:
 
 - `~/.openclaw/openclaw.json`
 - `~/.openclaw/.env`
 
-镜像构建和默认启动都不执行模型初始化或模型切换。模型/provider 配置由 Agent Hub 在运行期负责。
+Image build and default startup do not initialize or switch models. Model and provider configuration is handled by Agent Hub at runtime.
 
-Agent Hub 场景下同一个 Devbox 会通过平台鉴权和网关 token 控制访问，镜像默认写入 `gateway.controlUi.allowedOrigins=["*"]` 和 `gateway.controlUi.dangerouslyDisableDeviceAuth=true`，关闭 OpenClaw Control UI 的来源限制和设备配对流程。
+In Agent Hub, access to the same Devbox is controlled by platform authentication and the gateway token. The image writes `gateway.controlUi.allowedOrigins=["*"]` and `gateway.controlUi.dangerouslyDisableDeviceAuth=true` by default, disabling OpenClaw Control UI origin restrictions and device pairing.
 
-### 查看 ai-agent-switch 状态
+### Show ai-agent-switch Status
 
 ```bash
 docker run --rm agent-hub/openclaw:dev ai-agent-switch status --json
 ```
 
-## 本地持久化测试
+## Local Persistence Test
 
 ```bash
 mkdir -p .tmp/openclaw-home
@@ -89,6 +89,6 @@ docker run -d \
 docker exec -e HOME=/root openclaw-local ai-agent-switch status --json
 ```
 
-容器默认把 `gateway.bind` 固定为 `lan`，这样 `docker run -p ...` 后宿主机可以直接访问 published port。这里额外设置 `OPENCLAW_NO_RESPAWN=1`，避免 `docker run` 场景下需要 full-process restart 的配置变更直接让容器退出。
+The container pins `gateway.bind` to `lan` by default, so the host can access the published port after `docker run -p ...`. It also sets `OPENCLAW_NO_RESPAWN=1` to prevent configuration changes that require a full process restart from exiting the container in local `docker run` scenarios.
 
-默认原生配置会禁用 `acpx`、`bonjour`、`browser` 这几个 bundled sidecar 插件。第一阶段 Devbox adapter 只验收 gateway、模型 provider、配置热更新和 inference 链路；不默认打开 OpenClaw 桌面/频道发现能力，避免本地 Docker 与 Devbox 容器网络里出现非核心 sidecar 阻塞或重启。
+The default native configuration disables the bundled `acpx`, `bonjour`, and `browser` sidecar plugins. This Devbox adapter validates gateway, model provider, hot-reload configuration, and inference paths first; desktop and channel discovery sidecars are not enabled by default to avoid non-core blocking or restart behavior in local Docker and Devbox container networks.

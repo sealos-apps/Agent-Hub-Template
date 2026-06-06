@@ -1,8 +1,8 @@
-# Hermes 本地测试
+# Hermes Local Testing
 
-这份文档对应 `agents/hermes-agent`。当前模板已经移除 `config.sh` 和 `config.json`，测试重点是镜像构建、统一入口、Gateway 启动和 API 健康检查。
+This document covers `agents/hermes-agent`. The current template has removed `config.sh` and `config.json`; tests focus on image build, the shared entrypoint, gateway startup, and API health.
 
-## 语法与契约
+## Syntax And Contract
 
 ```bash
 bash test/validate-agent-contract.sh agents/hermes-agent
@@ -11,13 +11,13 @@ bash -n agents/hermes-agent/entrypoint.sh
 cmp -s agents/_template/entrypoint.sh agents/hermes-agent/entrypoint.sh
 ```
 
-## 构建镜像
+## Build Image
 
 ```bash
 docker build -f agents/hermes-agent/Dockerfile -t agent-hub/hermes-agent:local .
 ```
 
-## 启动 Gateway
+## Start Gateway
 
 ```bash
 docker rm -f hermes-local 2>/dev/null || true
@@ -29,13 +29,13 @@ docker run -d \
   agent-hub/hermes-agent:local
 ```
 
-默认 `CMD ["start"]` 会进入：
+Default `CMD ["start"]` enters:
 
 ```text
 /init -> /opt/agent/entrypoint.sh -> /opt/agent/bin/start -> hermes gateway run
 ```
 
-## 验证 API
+## Verify API
 
 ```bash
 curl -sv --max-time 5 \
@@ -43,9 +43,9 @@ curl -sv --max-time 5 \
   -H "Authorization: Bearer ${API_SERVER_KEY}"
 ```
 
-这个检查的重点不是模型调用成功，而是容器已经按固定 `start` 语义把 gateway 拉起来。
+This check verifies that the container starts the gateway through the fixed `start` path. It does not require a real model call to succeed.
 
-## 清理
+## Cleanup
 
 ```bash
 docker rm -f hermes-local
