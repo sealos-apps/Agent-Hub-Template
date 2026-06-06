@@ -104,8 +104,8 @@ modelIntegration:
       required: true
       mutable: true
       defaultModels:
-        us: gpt-5.4
-        cn: glm-5.1
+        us: gpt-5.5
+        cn: qwen3.6-plus
       modelTypes: [text]
     - key: vision
       label:
@@ -114,7 +114,7 @@ modelIntegration:
       required: true
       mutable: true
       defaultModels:
-        us: gemini-3.5-flash
+        us: gpt-5.5
         cn: qwen3.6-plus
       modelTypes: [vision]
     - key: image
@@ -124,7 +124,7 @@ modelIntegration:
       required: true
       mutable: true
       defaultModels:
-        us: gemini-3.1-flash-image-preview
+        us: gpt-image-2
         cn: qwen-image-2.0-pro
       modelTypes: [image]
     - key: asr
@@ -192,111 +192,41 @@ regionModelTypes:
           capabilities: [chat, reasoning, agent]
           inputModalities: [text]
           outputModalities: [text]
-        - value: claude-opus-4-7
-          label: Claude Opus 4.7
-          helper: Anthropic
-          provider: custom:aiproxy-anthropic
-          apiMode: anthropic_messages
+        - value: gpt-5.4-pro
+          label: GPT-5.4 Pro
+          helper: OpenAI
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
           kind: llm
           runtimeProvider: openai
           capabilities: [chat, reasoning, agent]
           inputModalities: [text]
           outputModalities: [text]
-        - value: claude-opus-4-6
-          label: Claude Opus 4.6
-          helper: Anthropic
-          provider: custom:aiproxy-anthropic
-          apiMode: anthropic_messages
+        - value: gpt-5.2
+          label: GPT-5.2
+          helper: OpenAI
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
           kind: llm
           runtimeProvider: openai
           capabilities: [chat, reasoning, agent]
           inputModalities: [text]
           outputModalities: [text]
-        - value: claude-sonnet-4-6
-          label: Claude Sonnet 4.6
-          helper: Anthropic
-          provider: custom:aiproxy-anthropic
-          apiMode: anthropic_messages
+        - value: gpt-5.1
+          label: GPT-5.1
+          helper: OpenAI
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
           kind: llm
           runtimeProvider: openai
           capabilities: [chat, reasoning, agent]
-          inputModalities: [text]
-          outputModalities: [text]
-        - value: glm-5.1
-          label: GLM-5.1
-          helper: GLM
-          provider: custom:aiproxy-chat
-          apiMode: chat_completions
-          kind: llm
-          runtimeProvider: openai
-          capabilities: [chat, reasoning]
-          inputModalities: [text]
-          outputModalities: [text]
-        - value: kimi-k2.6
-          label: Kimi K2.6
-          helper: Kimi
-          provider: custom:aiproxy-chat
-          apiMode: chat_completions
-          kind: llm
-          runtimeProvider: openai
-          capabilities: [chat, reasoning]
-          inputModalities: [text]
-          outputModalities: [text]
-        - value: deepseek-v4-pro
-          label: DeepSeek V4 Pro
-          helper: DeepSeek
-          provider: custom:aiproxy-chat
-          apiMode: chat_completions
-          kind: llm
-          runtimeProvider: openai
-          capabilities: [chat, reasoning]
-          inputModalities: [text]
-          outputModalities: [text]
-        - value: deepseek-v4-flash
-          label: DeepSeek V4 Flash
-          helper: DeepSeek
-          provider: custom:aiproxy-chat
-          apiMode: chat_completions
-          kind: llm
-          runtimeProvider: openai
-          capabilities: [chat, reasoning]
           inputModalities: [text]
           outputModalities: [text]
     - key: vision
       label: 视觉理解模型
       models:
-        - value: gemini-3.5-flash
-          label: Gemini 3.5 Flash
-          helper: Google
-          provider: custom:aiproxy-chat
-          apiMode: chat_completions
-          kind: llm
-          runtimeProvider: openai
-          capabilities: [vision, multimodal]
-          inputModalities: [text, image]
-          outputModalities: [text]
-        - value: gemini-3.1-pro-preview
-          label: Gemini 3.1 Pro Preview
-          helper: Google
-          provider: custom:aiproxy-chat
-          apiMode: chat_completions
-          kind: llm
-          runtimeProvider: openai
-          capabilities: [vision, multimodal]
-          inputModalities: [text, image]
-          outputModalities: [text]
-        - value: gemini-3.1-flash-lite-preview
-          label: Gemini 3.1 Flash Lite Preview
-          helper: Google
-          provider: custom:aiproxy-chat
-          apiMode: chat_completions
-          kind: llm
-          runtimeProvider: openai
-          capabilities: [vision, multimodal]
-          inputModalities: [text, image]
-          outputModalities: [text]
-        - value: gpt-5.4-mini
-          label: GPT-5.4 Mini
+        - value: gpt-5.5
+          label: GPT-5.5
           helper: OpenAI
           provider: custom:aiproxy-chat
           apiMode: chat_completions
@@ -308,26 +238,6 @@ regionModelTypes:
     - key: image
       label: 生图模型
       models:
-        - value: gemini-3.1-flash-image-preview
-          label: Gemini 3.1 Flash Image Preview
-          helper: Google · Nano Banana 2
-          provider: custom:aiproxy-chat
-          apiMode: image_generation
-          kind: image_generation
-          runtimeProvider: gemini
-          capabilities: [image_generation]
-          inputModalities: [text, image]
-          outputModalities: [image]
-        - value: gemini-3-pro-image-preview
-          label: Gemini 3 Pro Image Preview
-          helper: Google · Nano Banana Pro
-          provider: custom:aiproxy-chat
-          apiMode: image_generation
-          kind: image_generation
-          runtimeProvider: gemini
-          capabilities: [image_generation]
-          inputModalities: [text, image]
-          outputModalities: [image]
         - value: gpt-image-2
           label: GPT Image 2
           helper: OpenAI
@@ -391,24 +301,24 @@ regionModelTypes:
     - key: text
       label: 普通模型
       models:
-        - value: glm-5.1
-          label: GLM-5.1
-          helper: GLM
+        - value: qwen3.6-plus
+          label: Qwen3.6 Plus
+          helper: Qwen
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           kind: llm
           runtimeProvider: openai
-          capabilities: [chat, reasoning]
+          capabilities: [chat, reasoning, agent]
           inputModalities: [text]
           outputModalities: [text]
-        - value: kimi-k2.6
-          label: Kimi K2.6
-          helper: Kimi
+        - value: qwen3.5-plus
+          label: Qwen3.5 Plus
+          helper: Qwen
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           kind: llm
           runtimeProvider: openai
-          capabilities: [chat, reasoning]
+          capabilities: [chat, reasoning, agent]
           inputModalities: [text]
           outputModalities: [text]
         - value: deepseek-v4-pro
@@ -424,16 +334,6 @@ regionModelTypes:
         - value: deepseek-v4-flash
           label: DeepSeek V4 Flash
           helper: DeepSeek
-          provider: custom:aiproxy-chat
-          apiMode: chat_completions
-          kind: llm
-          runtimeProvider: openai
-          capabilities: [chat, reasoning]
-          inputModalities: [text]
-          outputModalities: [text]
-        - value: glm-5
-          label: GLM-5
-          helper: GLM
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           kind: llm
@@ -464,9 +364,9 @@ regionModelTypes:
           capabilities: [vision, multimodal]
           inputModalities: [text, image]
           outputModalities: [text]
-        - value: glm-5v-turbo
-          label: GLM-5V Turbo
-          helper: GLM
+        - value: qwen3-vl-plus
+          label: Qwen3 VL Plus
+          helper: Qwen
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           kind: llm
@@ -474,9 +374,9 @@ regionModelTypes:
           capabilities: [vision, multimodal]
           inputModalities: [text, image]
           outputModalities: [text]
-        - value: kimi-k2.6
-          label: Kimi K2.6
-          helper: Kimi
+        - value: qwen-vl-plus
+          label: Qwen VL Plus
+          helper: Qwen
           provider: custom:aiproxy-chat
           apiMode: chat_completions
           kind: llm
