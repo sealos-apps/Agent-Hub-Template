@@ -674,25 +674,35 @@ for agent_dir in "${agents[@]}"; do
   grep -F 'bin/start' "$agent_dir/install.sh" >/dev/null || \
     fail "$agent_dir/install.sh must create /opt/agent/bin/start"
   if [[ "$agent_dir" != "agents/_template" ]]; then
-    grep -F 'raw.githubusercontent.com/sealos-apps/ai-agent-switch/main/install.sh' "$agent_dir/install.sh" >/dev/null || \
-      fail "$agent_dir/install.sh must install ai-agent-switch through the official curl installer"
-    if grep -F 'AI_AGENT_SWITCH_LATEST_RELEASE_URL' "$agent_dir/install.sh" >/dev/null; then
-      fail "$agent_dir/install.sh must let the official installer resolve the latest ai-agent-switch release"
+    grep -F 'https://github.com/sealos-apps/ai-agent-switch/releases/latest/download/ai-agent-switch-linux-x64.tar.gz' "$agent_dir/install.sh" >/dev/null || \
+      fail "$agent_dir/install.sh must install the latest ai-agent-switch linux-x64 release asset without using the GitHub API"
+    if grep -F 'api.github.com/repos/sealos-apps/ai-agent-switch/releases' "$agent_dir/install.sh" >/dev/null; then
+      fail "$agent_dir/install.sh must not resolve ai-agent-switch through the GitHub releases API"
     fi
+    grep -F 'curl --connect-timeout 10 --max-time 120 --retry 2 --retry-delay 1 -fsSL "$asset_url" -o "$archive_path"' "$agent_dir/install.sh" >/dev/null || \
+      fail "$agent_dir/install.sh must download ai-agent-switch with bounded retries"
+    grep -F '[[ "$(uname -m)" == "x86_64" ]] || fail "ai-agent-switch linux-x64 release requires x86_64"' "$agent_dir/install.sh" >/dev/null || \
+      fail "$agent_dir/install.sh must fail early on unsupported ai-agent-switch release architectures"
     grep -F 'install_dir="/opt/ai-agent-switch/bin"' "$agent_dir/install.sh" >/dev/null || \
       fail "$agent_dir/install.sh must install ai-agent-switch into /opt/ai-agent-switch/bin"
-    grep -E 'INSTALL_DIR=["'\'']?\$install_dir["'\'']?[[:space:]]+sh' "$agent_dir/install.sh" >/dev/null || \
-      fail "$agent_dir/install.sh must install ai-agent-switch latest through the installer environment"
+    grep -F 'tar -xzf "$archive_path" -C "$tmp_dir"' "$agent_dir/install.sh" >/dev/null || \
+      fail "$agent_dir/install.sh must extract the ai-agent-switch release archive"
+    grep -F 'cp "${tmp_dir}/ai-agent-switch-${platform}/ai-agent-switch" "${install_dir}/ai-agent-switch"' "$agent_dir/install.sh" >/dev/null || \
+      fail "$agent_dir/install.sh must install the ai-agent-switch binary from the release archive"
     grep -F 'ln -sf "${install_dir}/ai-agent-switch" /usr/local/bin/ai-agent-switch' "$agent_dir/install.sh" >/dev/null || \
-      fail "$agent_dir/install.sh must expose only the ai-agent-switch command globally"
+      fail "$agent_dir/install.sh must expose the ai-agent-switch command globally"
+    grep -F 'ai-agent-switch --version >/dev/null 2>&1' "$agent_dir/install.sh" >/dev/null || \
+      fail "$agent_dir/install.sh must execute the bundled ai-agent-switch binary during build validation"
+    grep -F 'trap '\''rm -rf "$tmp_dir"'\'' EXIT' "$agent_dir/install.sh" >/dev/null || \
+      fail "$agent_dir/install.sh must clean up temporary ai-agent-switch release files"
+    if grep -F 'ln -sf "${install_dir}/as" /usr/local/bin/as' "$agent_dir/install.sh" >/dev/null; then
+      fail "$agent_dir/install.sh must not shadow the system assembler with ai-agent-switch as"
+    fi
     if grep -E 'sh[[:space:]]+-s[[:space:]]+--[[:space:]]+["'\'']?\$\{?version\}?["'\'']?' "$agent_dir/install.sh" >/dev/null; then
       fail "$agent_dir/install.sh must not pass an explicit ai-agent-switch version to the installer"
     fi
     if grep -F -- '--install-dir /usr/local/bin' "$agent_dir/install.sh" >/dev/null; then
       fail "$agent_dir/install.sh must not install ai-agent-switch shortcuts directly into /usr/local/bin"
-    fi
-    if grep -E '(^|[[:space:]])as[|)]' "$agent_dir/install.sh" >/dev/null; then
-      fail "$agent_dir/install.sh must not expose the ai-agent-switch as shortcut"
     fi
     if grep -F 'AI_AGENT_SWITCH_VERSION' "$agent_dir/install.sh" >/dev/null; then
       fail "$agent_dir/install.sh must not pin ai-agent-switch through AI_AGENT_SWITCH_VERSION"
