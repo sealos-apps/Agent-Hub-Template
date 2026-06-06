@@ -30,8 +30,11 @@ chmod +x "$SOURCE_DIR/handle-startup.sh"
 "$SOURCE_DIR/handle-startup.sh"
 STARTUP
 echo oneshot >"$S6_DIR/startup/type"
-echo '/etc/s6-overlay/s6-rc.d/startup/run' >"$S6_DIR/startup/up"
-chmod 644 "$S6_DIR/startup/up"
+{
+	echo '#!/bin/sh'
+	echo 'exec /etc/s6-overlay/s6-rc.d/startup/run'
+} >"$S6_DIR/startup/up"
+chmod 755 "$S6_DIR/startup/up"
 
 
 for svc in startup; do

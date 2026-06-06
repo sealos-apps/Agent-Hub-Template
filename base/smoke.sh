@@ -39,7 +39,13 @@ docker run --rm --platform "$DOCKER_PLATFORM" --entrypoint /bin/bash "$IMAGE" -l
   done
   test -x /usr/sbin/devbox-sdk-server
   test -f /etc/s6-overlay/s6-rc.d/startup/run
+  test -x /etc/s6-overlay/s6-rc.d/startup/up
+  head -n 1 /etc/s6-overlay/s6-rc.d/startup/up | grep -Eq "^#!"
   test -f /etc/s6-overlay/s6-rc.d/sshd/run
+  test -x /etc/s6-overlay/s6-rc.d/sshd-log-prepare/up
+  head -n 1 /etc/s6-overlay/s6-rc.d/sshd-log-prepare/up | grep -F "#!/command/execlineb -P"
+  test -x /etc/s6-overlay/s6-rc.d/crond-log-prepare/up
+  head -n 1 /etc/s6-overlay/s6-rc.d/crond-log-prepare/up | grep -F "#!/command/execlineb -P"
   test -f /etc/s6-overlay/s6-rc.d/sdk-server/run
   test -f /etc/s6-overlay-hook/pre-rc-init.d/pre-rc-init.sh
   node -e "process.exit(process.versions.node.split(\".\")[0] === \"22\" ? 0 : 1)"
@@ -68,6 +74,6 @@ done
   fail "s6 services did not become ready"
 }
 
-docker exec "$CONTAINER" sh -lc 'test -f /usr/start/pod_id || true; pgrep -f "sshd -D" >/dev/null; pgrep -f "devbox-sdk-server" >/dev/null'
+docker exec "$CONTAINER" sh -lc 'test -f /usr/start/pod_id || true; test -f /run/utmp; pgrep -f "sshd -D" >/dev/null; pgrep -f "devbox-sdk-server" >/dev/null'
 
 printf '==> base smoke passed\n'

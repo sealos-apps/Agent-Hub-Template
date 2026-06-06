@@ -21,6 +21,9 @@ make_oneshot_up() { # name lines...
 	local name="$1"; shift
 	mkdir -p "$S6_DIR/$name" "$S6_DIR/$name/dependencies.d"
 	echo oneshot >"$S6_DIR/$name/type"
-	printf '%s\n' "$@" >"$S6_DIR/$name/up"
-	chmod 644 "$S6_DIR/$name/up"
+	{
+		echo '#!/command/execlineb -P'
+		printf '%s\n' "$@"
+	} >"$S6_DIR/$name/up"
+	chmod 755 "$S6_DIR/$name/up"
 }

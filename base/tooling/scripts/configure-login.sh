@@ -24,11 +24,3 @@ cat > /etc/logrotate.d/btmp <<EOF
 		maxsize 10M
 }
 EOF
-
-
-# Ensure /run/utmp exists with secure permissions (some tools expect it)
-if [ ! -e /run/utmp ]; then
-	: > /run/utmp
-	chmod 664 /run/utmp
-	chown root:"$UTMP_GROUP" /run/utmp
-fi

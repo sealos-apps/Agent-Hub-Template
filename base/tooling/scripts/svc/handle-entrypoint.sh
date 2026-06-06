@@ -22,8 +22,9 @@ s6-setuidgid "$DEFAULT_DEVBOX_USER" /bin/bash ./entrypoint.sh "${DEVBOX_ENV:-dev
 CHILD_PID=$!
 if [ -n "${CHILD_PID:-}" ]; then
   cleanup() {
-    # clean up entrypoint's child processes
+    # clean up entrypoint and its child processes
     pkill -TERM -P "$CHILD_PID" 2>/dev/null || true
+    kill -TERM "$CHILD_PID" 2>/dev/null || true
   }
   trap cleanup SIGTERM SIGINT
   # Wait for the child process and propagate its exit code
