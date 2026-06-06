@@ -1,24 +1,24 @@
-# Hermes Agent 镜像
+# Hermes Agent Image
 
-这个目录把官方 [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent/) 封装成 Sealos Devbox 可接入的标准镜像。
+This directory packages the upstream [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent/) project as a standard Sealos Devbox-compatible image.
 
-当前实现遵守第一阶段标准：
+The current implementation follows the shared Agent Hub runtime contract:
 
-- 固定入口：`entrypoint.sh start`
-- 镜像内置 `ai-agent-switch`
-- 镜像构建和默认启动不执行模型初始化命令
-- 当前模型通过 `ai-agent-switch client show hermes --json` 读取
-- 不承诺部署时透传任意 Hermes CLI 参数
-- 配置直接落到 Hermes 原生 `~/.hermes/config.yaml` 与 `~/.hermes/.env`
+- fixed entrypoint: `entrypoint.sh start`
+- bundled `ai-agent-switch`
+- no model initialization during image build or default startup
+- current model state is read with `ai-agent-switch client show hermes --json`
+- no promise to pass arbitrary Hermes CLI arguments through deployment settings
+- configuration is written to native Hermes files: `~/.hermes/config.yaml` and `~/.hermes/.env`
 
 ## Upstream Install
 
 - Hermes: clone `https://github.com/NousResearch/hermes-agent.git`, then install `.[all]` with `uv`
 - ai-agent-switch: `curl -fsSL https://raw.githubusercontent.com/sealos-apps/ai-agent-switch/main/install.sh | sh`
 
-## 运行方式
+## Runtime Usage
 
-### 默认启动
+### Default Startup
 
 ```bash
 docker run --rm \
@@ -27,7 +27,7 @@ docker run --rm \
   agent-hub/hermes-agent:dev
 ```
 
-等价于：
+Equivalent command:
 
 ```bash
 docker run --rm \
@@ -36,36 +36,36 @@ docker run --rm \
   agent-hub/hermes-agent:dev start
 ```
 
-默认启动必须通过运行时环境变量或 Kubernetes Secret 提供 `API_SERVER_KEY`。
+Default startup requires `API_SERVER_KEY` from runtime environment variables or a Kubernetes Secret.
 
-镜像内部固定执行：
+The image always starts:
 
 ```bash
 hermes gateway run
 ```
 
-### 调试 shell
+### Debug Shell
 
 ```bash
 docker run --rm -it agent-hub/hermes-agent:dev shell
 ```
 
-### 原生 CLI 调试
+### Native CLI Debugging
 
 ```bash
 docker run --rm agent-hub/hermes-agent:dev run version
 ```
 
-## 模型配置方式
+## Model Configuration
 
-Hermes 这一层不再维护仓库私有配置脚本，模型初始化和切换统一交给 `ai-agent-switch`，最终仍然写入 Hermes 原生配置：
+This image does not keep repository-specific model configuration scripts. Model initialization and switching are handled by `ai-agent-switch`, which writes the final state back to native Hermes configuration:
 
 - `~/.hermes/config.yaml`
 - `~/.hermes/.env`
 
-Agent Hub 注入的模型变量由平台后续流程处理；镜像本身只提供 Hermes 和 `ai-agent-switch` 二进制。
+Model values injected by Agent Hub are handled by the platform runtime flow. The image only provides Hermes and the `ai-agent-switch` binary.
 
-### 初始化或切换模型
+### Initialize Or Switch Models
 
 ```bash
 docker run --rm \
@@ -88,15 +88,15 @@ docker run --rm \
   '
 ```
 
-这个命令会写入 Hermes 原生 `providers.ccswitch`，并设置 `model.provider = ccswitch`、`model.default = gpt-5.4`。密钥通过环境变量引用，不写入明文 token。
+This command writes the native Hermes `providers.ccswitch` entry and sets `model.provider = ccswitch` and `model.default = gpt-5.4`. The API key is referenced through an environment variable and is not written as a plaintext token.
 
-### 查看当前模型
+### Show Current Model
 
 ```bash
 docker run --rm agent-hub/hermes-agent:dev ai-agent-switch client show hermes --json
 ```
 
-## 本地持久化测试
+## Local Persistence Test
 
 ```bash
 mkdir -p .tmp/hermes-home
@@ -124,4 +124,4 @@ docker run -d \
 docker exec -e HOME=/root hermes-local ai-agent-switch client show hermes --json
 ```
 
-本地持久化测试建议在启动长驻 gateway 前完成 `init`。
+For local persistence tests, run `init` before starting the long-running gateway process.

@@ -33,8 +33,8 @@ LABEL org.opencontainers.image.title="Agent Hub Devbox Base" \
       org.opencontainers.image.version="${BASE_IMAGE_VERSION}" \
       org.opencontainers.image.source="base"
 
-COPY devbox-runtime/tooling/scripts ${BASE_TOOLS_DIR}/scripts
-COPY devbox-runtime/tooling/docs ${BASE_TOOLS_DIR}/docs
+COPY base/tooling/scripts ${BASE_TOOLS_DIR}/scripts
+COPY base/tooling/docs ${BASE_TOOLS_DIR}/docs
 COPY base/install.sh /tmp/install-agent-devbox-base.sh
 
 RUN chmod -R +x ${BASE_TOOLS_DIR}/scripts /tmp/install-agent-devbox-base.sh \

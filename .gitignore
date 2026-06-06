@@ -9,3 +9,6 @@ reference/
 test/*-local/
 
 .sealos/
+
+# Local planning artifacts
+docs/superpowers/
