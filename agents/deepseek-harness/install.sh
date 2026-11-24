@@ -78,7 +78,11 @@ fi
 configure_gateway_provider() {
   local patch_file="${DSH_HOME}/profiles/web/cordis.patch.yml"
   if [[ -f "$patch_file" ]]; then
-    return 0
+    local effective
+    effective="$(grep -v '^[[:space:]]*#' "$patch_file" | tr -d '[:space:]' || true)"
+    if [[ -n "$effective" && "$effective" != "[]" ]]; then
+      return 0
+    fi
   fi
   if [[ -z "${OPENAI_API_KEY:-}" || -z "${OPENAI_BASE_URL:-}" ]]; then
     return 0
