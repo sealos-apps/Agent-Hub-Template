@@ -8,3 +8,6 @@ agents:
   - name: cowagent
     path: agents/cowagent
     enabled: true
+  - name: deepseek-harness
+    path: agents/deepseek-harness
+    enabled: true

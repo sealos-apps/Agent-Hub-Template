@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ quote .Agent.Name }}
+  namespace: {{ quote .Agent.Namespace }}
+  labels:
+{{- range $key, $value := .ServiceLabels }}
+    {{ $key }}: {{ quote $value }}
+{{- end }}
+  annotations:
+{{- range $key, $value := .ServiceAnnotations }}
+    {{ $key }}: {{ quote $value }}
+{{- end }}
+spec:
+  selector:
+{{- range $key, $value := .SelectorLabels }}
+    {{ $key }}: {{ quote $value }}
+{{- end }}
+  ports:
+    - name: "http"
+      port: 3080
+      targetPort: 3080
+      protocol: "TCP"

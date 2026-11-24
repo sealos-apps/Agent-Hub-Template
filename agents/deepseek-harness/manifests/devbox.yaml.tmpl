@@ -1,0 +1,66 @@
+apiVersion: devbox.sealos.io/v1alpha2
+kind: Devbox
+metadata:
+  name: {{ quote .Agent.Name }}
+  namespace: {{ quote .Agent.Namespace }}
+  labels:
+{{- range $key, $value := .DevboxLabels }}
+    {{ $key }}: {{ quote $value }}
+{{- end }}
+  annotations:
+{{- range $key, $value := .DevboxAnnotations }}
+    {{ $key }}: {{ quote $value }}
+{{- end }}
+spec:
+  image: {{ quote .Image }}
+  state: "Running"
+  runtimeClassName: "devbox-runtime"
+  storageLimit: {{ quote .Agent.Storage }}
+  network:
+    type: "SSHGate"
+    extraPorts:
+      - containerPort: 3080
+  resource:
+    cpu: {{ quote .Agent.CPU }}
+    memory: {{ quote .Agent.Memory }}
+  config:
+    labels:
+{{- range $key, $value := .SelectorLabels }}
+      {{ $key }}: {{ quote $value }}
+{{- end }}
+    user: {{ quote .Agent.User }}
+    workingDir: {{ quote .Agent.WorkingDir }}
+    appPorts:
+      - name: {{ quote .Agent.Name }}
+        port: 3080
+        protocol: "TCP"
+        targetPort: 3080
+    env:
+      - name: "AGENT_NAME"
+        value: "deepseek-harness"
+      - name: "AGENT_WORKSPACE"
+        value: {{ quote .Agent.WorkingDir }}
+      - name: "AGENT_DATA_DIR"
+        value: "/root/.dsh"
+      - name: "AGENT_PORT"
+        value: "3080"
+      - name: "DSH_HOME"
+        value: "/root/.dsh"
+      - name: "SANDBOX_PUBLIC_HOST"
+        value: {{ quote .IngressDomain }}
+      - name: "AGENT_MODEL_PROVIDER"
+        value: {{ quote .Agent.ModelProvider }}
+      - name: "AGENT_MODEL_BASEURL"
+        value: {{ quote .Agent.ModelBaseURL }}
+      - name: "AGENT_MODEL_APIKEY"
+        value: {{ quote .Agent.ModelAPIKey }}
+      - name: "AGENT_MODEL"
+        value: {{ quote .Agent.Model }}
+      - name: "AGENT_MODEL_API_MODE"
+        value: {{ quote .Agent.ModelAPIMode }}
+      - name: "AGENT_TEMPLATE_ID"
+        value: {{ quote .Agent.TemplateID }}
+      - name: "AGENT_WORKDIR"
+        value: {{ quote .Agent.WorkingDir }}
+    args:
+      - start

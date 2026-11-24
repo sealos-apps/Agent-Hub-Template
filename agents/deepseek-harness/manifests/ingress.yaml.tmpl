@@ -1,0 +1,47 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ quote .Agent.Name }}
+  namespace: {{ quote .Agent.Namespace }}
+  labels:
+    cloud.sealos.io/app-deploy-manager: {{ quote .Agent.Name }}
+    cloud.sealos.io/app-deploy-manager-domain: {{ quote .IngressDomain }}
+{{- range $key, $value := .IngressLabels }}
+{{- if and (ne $key "cloud.sealos.io/app-deploy-manager") (ne $key "cloud.sealos.io/app-deploy-manager-domain") }}
+    {{ $key }}: {{ quote $value }}
+{{- end }}
+{{- end }}
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/proxy-body-size: "32m"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/client-body-buffer-size: "64k"
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "64k"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/server-snippet: |
+      client_header_buffer_size 64k;
+      large_client_header_buffers 4 128k;
+{{- range $key, $value := .IngressAnnotations }}
+{{- if and (ne $key "kubernetes.io/ingress.class") (ne $key "nginx.ingress.kubernetes.io/proxy-body-size") (ne $key "nginx.ingress.kubernetes.io/ssl-redirect") (ne $key "nginx.ingress.kubernetes.io/backend-protocol") (ne $key "nginx.ingress.kubernetes.io/client-body-buffer-size") (ne $key "nginx.ingress.kubernetes.io/proxy-buffer-size") (ne $key "nginx.ingress.kubernetes.io/proxy-send-timeout") (ne $key "nginx.ingress.kubernetes.io/proxy-read-timeout") (ne $key "nginx.ingress.kubernetes.io/server-snippet") }}
+    {{ $key }}: {{ quote $value }}
+{{- end }}
+{{- end }}
+spec:
+  ingressClassName: "nginx"
+  rules:
+    - host: {{ quote .IngressDomain }}
+      http:
+        paths:
+          - path: "/"
+            pathType: "Prefix"
+            backend:
+              service:
+                name: {{ quote .Agent.Name }}
+                port:
+                  number: 3080
+  tls:
+    - hosts:
+        - {{ quote .IngressDomain }}
+      secretName: "wildcard-cert"

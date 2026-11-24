@@ -1,0 +1,183 @@
+id: deepseek-harness
+name: DeepSeek Harness
+shortName: DeepSeek
+description: DeepSeek Harness web workbench preinstalled on Node 24 with automatic Sealos AI Gateway routing, terminal, files, and SSH access.
+image: ghcr.io/sealos-apps/deepseek-harness:latest
+port: 3080
+defaultArgs:
+  - start
+backendSupported: true
+workingDir: /workspace
+manifestDir: manifests
+user: root
+presentation:
+  logoKey: deepseek-harness
+  brandColor: "#4d6bfe"
+  docsLabel: Web UI
+workspaces:
+  - key: overview
+    label: Overview
+  - key: web-ui
+    label: Web UI
+  - key: files
+    label: Files
+  - key: settings
+    label: Settings
+access:
+  - key: web-ui
+    label: Web UI
+    path: /
+  - key: terminal
+    label: Terminal
+  - key: files
+    label: Files
+    rootPath: /workspace
+  - key: ssh
+    label: SSH
+actions:
+  - key: open-terminal
+    label: Terminal
+  - key: open-files
+    label: Files
+  - key: open-settings
+    label: Settings
+  - key: run
+    label: Start
+  - key: pause
+    label: Pause
+  - key: delete
+    label: Delete
+settings:
+  runtime:
+    - key: cpu
+      label: CPU
+      type: quantity
+      required: true
+      binding:
+        kind: runtime
+        key: cpu
+    - key: memory
+      label: Memory
+      type: quantity
+      required: true
+      binding:
+        kind: runtime
+        key: memory
+    - key: storage
+      label: Storage
+      type: quantity
+      required: true
+      binding:
+        kind: runtime
+        key: storage
+  agent:
+    - key: keySource
+      label: Key Source
+      type: text
+      readOnly: true
+      binding:
+        kind: derived
+        key: keySource
+modelIntegration:
+  type: ai-agent-switch
+  client: deepseek-harness
+  provider:
+    id: aiproxy
+    name:
+      zh: AI Proxy
+      en: AI Proxy
+    baseURL:
+      source: workspace
+    apiKeyEnv: AGENT_MODEL_APIKEY
+  slots:
+    - key: main
+      label:
+        zh: 主模型
+        en: Main model
+      required: true
+      mutable: true
+      defaultModels:
+        us: deepseek-v4-pro
+        cn: deepseek-v4-pro
+      modelTypes: [text]
+regionModelTypes:
+  us:
+    - key: text
+      label: 普通模型
+      models:
+        - value: deepseek-v4-pro
+          label: DeepSeek V4 Pro
+          helper: DeepSeek
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
+          kind: llm
+          capabilities: [chat, reasoning]
+          inputModalities: [text]
+          outputModalities: [text]
+        - value: deepseek-v4-flash
+          label: DeepSeek V4 Flash
+          helper: DeepSeek
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
+          kind: llm
+          capabilities: [chat, reasoning]
+          inputModalities: [text]
+          outputModalities: [text]
+        - value: gpt-5.4
+          label: GPT-5.4
+          helper: OpenAI
+          provider: custom:aiproxy-responses
+          apiMode: codex_responses
+          kind: llm
+          capabilities: [reasoning, code]
+          inputModalities: [text]
+          outputModalities: [text]
+        - value: claude-sonnet-4-6
+          label: Claude Sonnet 4.6
+          helper: Anthropic
+          provider: custom:aiproxy-anthropic
+          apiMode: anthropic_messages
+          kind: llm
+          capabilities: [reasoning, vision]
+          inputModalities: [text, image]
+          outputModalities: [text]
+  cn:
+    - key: text
+      label: 普通模型
+      models:
+        - value: deepseek-v4-pro
+          label: DeepSeek V4 Pro
+          helper: DeepSeek
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
+          kind: llm
+          capabilities: [chat, reasoning]
+          inputModalities: [text]
+          outputModalities: [text]
+        - value: deepseek-v4-flash
+          label: DeepSeek V4 Flash
+          helper: DeepSeek
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
+          kind: llm
+          capabilities: [chat, reasoning]
+          inputModalities: [text]
+          outputModalities: [text]
+        - value: glm-5.1
+          label: GLM-5.1
+          helper: GLM
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
+          kind: llm
+          capabilities: [chat, reasoning]
+          inputModalities: [text]
+          outputModalities: [text]
+        - value: kimi-k2.6
+          label: Kimi K2.6
+          helper: Kimi
+          provider: custom:aiproxy-chat
+          apiMode: chat_completions
+          kind: llm
+          capabilities: [chat, reasoning]
+          inputModalities: [text]
+          outputModalities: [text]
